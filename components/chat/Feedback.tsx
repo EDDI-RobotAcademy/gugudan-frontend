@@ -5,24 +5,31 @@ import { XMarkIcon } from "@heroicons/react/24/outline";
 
 interface FeedbackProps {
   isOpen: boolean;
+  feedbackScore: "LIKE" | "DISLIKE" | null;
   onClose: () => void;
   onSubmit: (reason: string, comment: string) => void;
 }
 
-export function Feedback({ isOpen, onClose, onSubmit }: FeedbackProps) {
+export function Feedback({ isOpen, onClose, onSubmit, feedbackScore }: FeedbackProps) {
   const [reason, setReason] = useState("");
   const [comment, setComment] = useState("");
 
   if (!isOpen) return null;
 
-  const reasons = [
-    { id: "INACCURATE", label: "상황 파악 오답" },
-    { id: "OFFENSIVE", label: "말투가 불편함" },
-    { id: "NOT_EMPATHETIC", label: "공감이 안 됨" },
-    { id: "TOO_LONG", label: "답변이 너무 김" },
-    { id: "IRRELEVANT", label: "엉뚱한 답변" },
-    { id: "ETC", label: "기타 (직접 입력)" },
-  ];
+    const reasons = feedbackScore === "LIKE" 
+        ? [
+            { id: "ACCURATE", label: "정확한 분석" },
+            { id: "EMPATHETIC", label: "따뜻한 공감" },
+            { id: "HELPFUL", label: "도움이 됨" },
+        ]
+        : [
+            { id: "INACCURATE", label: "상황 파악 오답" },
+            { id: "OFFENSIVE", label: "말투가 불편함" },
+            { id: "NOT_EMPATHETIC", label: "공감이 안 됨" },
+            { id: "TOO_LONG", label: "답변이 너무 김" },
+            { id: "IRRELEVANT", label: "엉뚱한 답변" },
+            { id: "ETC", label: "기타 (직접 입력)" },
+        ];
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">

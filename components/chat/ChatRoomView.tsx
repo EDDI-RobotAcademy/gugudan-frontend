@@ -25,6 +25,7 @@ export function ChatRoomView({ roomId, onRoomCreated }: Props) {
   const [isComposing, setIsComposing] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [targetMessageId, setTargetMessageId] = useState<number | null>(null);
+  const [feedbackScore, setFeedbackScore] = useState<"LIKE" | "DISLIKE" | null>(null);
   
   const abortControllerRef = useRef<AbortController | null>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -216,22 +217,10 @@ export function ChatRoomView({ roomId, onRoomCreated }: Props) {
     }
   };
 
-  const handleFeedbackClick = async (msgId: number, score: "LIKE" | "DISLIKE") => {
-    if (score === "LIKE") {
-      try {
-        await sendFeedbackRequest(msgId, "LIKE");
-        setMessages((prev) =>
-          prev.map((m) =>
-            m.message_id === msgId ? { ...m, user_feedback: "LIKE" } : m
-          )
-        );
-      } catch (e) {
-        console.error(e);
-      }
-    } else {
-      setTargetMessageId(msgId);
-      setIsModalOpen(true);
-    }
+  const handleFeedbackClick = (msgId: number, score: "LIKE" | "DISLIKE") => {
+    setTargetMessageId(msgId);
+    setFeedbackScore(score);
+    setIsModalOpen(true);
   };
 
   // 관계 고민 카테고리 데이터
@@ -406,20 +395,40 @@ export function ChatRoomView({ roomId, onRoomCreated }: Props) {
       </div>
       <Feedback 
         isOpen={isModalOpen}
+        feedbackScore={feedbackScore}
         onClose={() => setIsModalOpen(false)}
         onSubmit={async (reason: string, comment: string) => {
-          if (targetMessageId) {
-            await sendFeedbackRequest(targetMessageId, "DISLIKE", reason, comment);
-            setMessages((prev) =>
-            prev.map((m) =>
-              m.message_id === targetMessageId ? { ...m, user_feedback: "DISLIKE" } : m
-            )
-          );
-            setIsModalOpen(false);
-            alert("의견을 보내주셔서 감사합니다.");
-          }
-        }}
-      />
+            if (targetMessageId && feedbackScore) {
+              const validReasons = [
+                "ACCURATE", "EMPATHETIC", "HELPFUL", 
+                "INACCURATE", "OFFENSIVE", "TOO_LONG", 
+                "NOT_EMPATHETIC", "IRRELEVANT"
+              ];
+
+              let finalReason: string;
+              let finalComment: string | undefined = undefined;
+
+              if (reason === "ETC") {
+                finalReason = "OTHER";
+                finalComment = comment || undefined; 
+              } else if (validReasons.includes(reason)) {
+                finalReason = reason;
+                finalComment = undefined;
+              } else {
+                finalReason = "OTHER";
+                finalComment = reason;
+              }
+
+              await sendFeedbackRequest(targetMessageId, feedbackScore, finalReason, finalComment);
+
+              setMessages((prev) =>
+                prev.map((m) => m.message_id === targetMessageId ? { ...m, user_feedback: feedbackScore } : m)
+              );
+              setIsModalOpen(false);
+              alert("의견을 보내주셔서 감사합니다.");
+            }
+          }}
+        />
     </div>
   );
 }
