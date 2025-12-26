@@ -27,7 +27,7 @@ export default function HomeClient() {
         description:
           "결혼 생활의 어려움, 배우자와의 갈등, 소통 문제 등을 함께 이야기해요",
         image:
-          "https://images.unsplash.com/photo-1606800052052-a08af7148866?auto=format&fit=crop&w=1600&q=80",
+          "/images/home/home-topic-marriage.jpg",
         overlay: "from-rose-400 to-pink-500",
       },
       {
@@ -37,7 +37,7 @@ export default function HomeClient() {
         description:
           "연인과의 갈등, 소통 방법, 관계 발전에 대해 편하게 상담해요",
         image:
-          "https://images.unsplash.com/photo-1513279922550-250c2129b13a?auto=format&fit=crop&w=1600&q=80",
+          "/images/home/home-topic-dating.webp",
         overlay: "from-purple-400 to-indigo-500",
       },
       {
@@ -47,7 +47,7 @@ export default function HomeClient() {
         description:
           "관심있는 사람과의 관계, 고백 타이밍, 상대방의 마음 등을 고민해요",
         image:
-          "https://images.unsplash.com/photo-1506014299253-3725319c0f69?auto=format&fit=crop&w=1600&q=80",
+          "/images/home/home-topic-crush.jpg",
         overlay: "from-amber-400 to-orange-500",
       },
     ],
