@@ -1,6 +1,6 @@
 "use client";
 
-import { type ButtonHTMLAttributes, type ReactNode } from "react";
+import {type ButtonHTMLAttributes, type ReactNode} from "react";
 
 type ButtonVariant = "primary" | "secondary" | "outline" | "ghost";
 type ButtonSize = "sm" | "md" | "lg";

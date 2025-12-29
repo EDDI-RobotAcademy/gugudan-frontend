@@ -1,9 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useParams, useRouter, usePathname  } from "next/navigation";
-import { ArrowLeft, Heart, MessageCircle, Lightbulb, TrendingUp } from "lucide-react";
-import { useAuth } from "@/hooks/useAuth";
+import {useParams, usePathname, useRouter} from "next/navigation";
+import {ArrowLeft, Heart, Lightbulb, MessageCircle, TrendingUp} from "lucide-react";
+import {useAuth} from "@/hooks/useAuth";
 
 type CategoryKey = "marriage" | "dating" | "crush";
 

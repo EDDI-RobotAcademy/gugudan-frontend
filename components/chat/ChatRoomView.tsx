@@ -1,9 +1,17 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { ChatMessage } from "./ChatMessage";
-import { Feedback } from "./Feedback";
-import { StopIcon, PaperAirplaneIcon, SparklesIcon, HeartIcon, ChatBubbleLeftEllipsisIcon, ArrowsRightLeftIcon, FaceSmileIcon } from "@heroicons/react/24/outline";
+import {useEffect, useRef, useState} from "react";
+import {ChatMessage} from "./ChatMessage";
+import {Feedback} from "./Feedback";
+import {
+    ArrowsRightLeftIcon,
+    ChatBubbleLeftEllipsisIcon,
+    FaceSmileIcon,
+    HeartIcon,
+    PaperAirplaneIcon,
+    SparklesIcon,
+    StopIcon
+} from "@heroicons/react/24/outline";
 
 type Message = {
   message_id?: number;

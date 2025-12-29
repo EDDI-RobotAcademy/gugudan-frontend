@@ -2,8 +2,8 @@
  * API client with CSRF token handling
  */
 
-import { getCsrfToken } from "./auth";
-import { API_BASE_URL } from "./constants";
+import {getCsrfToken} from "./auth";
+import {API_BASE_URL} from "./constants";
 
 type RequestMethod = "GET" | "POST" | "PUT" | "DELETE" | "PATCH";
 

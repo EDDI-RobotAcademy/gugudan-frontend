@@ -1,5 +1,5 @@
-import { HandThumbUpIcon, HandThumbDownIcon } from "@heroicons/react/24/outline";
-import { HandThumbUpIcon as HandThumbUpSolid, HandThumbDownIcon as HandThumbDownSolid } from "@heroicons/react/24/solid";
+import {HandThumbDownIcon, HandThumbUpIcon} from "@heroicons/react/24/outline";
+import {HandThumbDownIcon as HandThumbDownSolid, HandThumbUpIcon as HandThumbUpSolid} from "@heroicons/react/24/solid";
 
 export function ChatMessage({ message_id, role, content, onFeedback, user_feedback }: { message_id?: number; role: "USER" | "ASSISTANT"; content: string; user_feedback?: "LIKE" | "DISLIKE" | null; onFeedback?: (msgId: number, score: "LIKE" | "DISLIKE") => void }) {
   const isUser = role === "USER";

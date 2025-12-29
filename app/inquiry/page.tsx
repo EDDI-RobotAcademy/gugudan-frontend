@@ -1,22 +1,22 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { useAuth } from "@/hooks/useAuth";
-import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
-import { api } from "@/lib/api";
+import {useEffect, useState} from "react";
+import {useRouter} from "next/navigation";
+import {useAuth} from "@/hooks/useAuth";
+import {ProtectedRoute} from "@/components/auth/ProtectedRoute";
+import {api} from "@/lib/api";
 import {
-  Inquiry,
-  InquiryCategory,
-  InquiryStatus,
-  CreateInquiryRequest,
-  INQUIRY_CATEGORY_LABELS,
-  INQUIRY_STATUS_LABELS,
+    CreateInquiryRequest,
+    Inquiry,
+    INQUIRY_CATEGORY_LABELS,
+    INQUIRY_STATUS_LABELS,
+    InquiryCategory,
+    InquiryStatus,
 } from "@/types/inquiry";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/Card";
-import { Button } from "@/components/ui/Button";
-import { Badge } from "@/components/ui/Badge";
-import { MessageCircle, Plus, X } from "lucide-react";
+import {Card, CardContent, CardDescription, CardHeader, CardTitle} from "@/components/ui/Card";
+import {Button} from "@/components/ui/Button";
+import {Badge} from "@/components/ui/Badge";
+import {MessageCircle, Plus, X} from "lucide-react";
 
 function InquiryPageContent() {
   const router = useRouter();

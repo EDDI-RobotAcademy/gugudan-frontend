@@ -1,22 +1,22 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useRouter, useParams } from "next/navigation";
-import { useAuth } from "@/hooks/useAuth";
-import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
-import { api } from "@/lib/api";
+import {useEffect, useState} from "react";
+import {useParams, useRouter} from "next/navigation";
+import {useAuth} from "@/hooks/useAuth";
+import {ProtectedRoute} from "@/components/auth/ProtectedRoute";
+import {api} from "@/lib/api";
 import {
-  Inquiry,
-  InquiryDetailResponse,
-  InquiryReply,
-  CreateInquiryReplyRequest,
-  INQUIRY_CATEGORY_LABELS,
-  INQUIRY_STATUS_LABELS,
+    CreateInquiryReplyRequest,
+    Inquiry,
+    INQUIRY_CATEGORY_LABELS,
+    INQUIRY_STATUS_LABELS,
+    InquiryDetailResponse,
+    InquiryReply,
 } from "@/types/inquiry";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/Card";
-import { Button } from "@/components/ui/Button";
-import { Badge } from "@/components/ui/Badge";
-import { ArrowLeft, MessageCircle, Clock, CheckCircle2, Send } from "lucide-react";
+import {Card, CardContent, CardDescription, CardHeader, CardTitle} from "@/components/ui/Card";
+import {Button} from "@/components/ui/Button";
+import {Badge} from "@/components/ui/Badge";
+import {ArrowLeft, CheckCircle2, Clock, MessageCircle, Send} from "lucide-react";
 
 function InquiryDetailContent() {
   const router = useRouter();

@@ -2,7 +2,7 @@
  * Auth utilities - Cookie helpers
  */
 
-import { COOKIES } from "./constants";
+import {COOKIES} from "./constants";
 
 /**
  * Get a cookie value by name

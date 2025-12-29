@@ -1,17 +1,10 @@
 "use client";
 
-import {
-  createContext,
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-  type ReactNode,
-} from "react";
+import {createContext, type ReactNode, useCallback, useEffect, useMemo, useState,} from "react";
 
-import { api, ApiClientError } from "@/lib/api";
-import { API_ENDPOINTS, API_BASE_URL } from "@/lib/constants";
-import type { AuthContextType, AuthStatusResponse, User } from "@/types/auth";
+import {api, ApiClientError} from "@/lib/api";
+import {API_BASE_URL, API_ENDPOINTS} from "@/lib/constants";
+import type {AuthContextType, AuthStatusResponse, User} from "@/types/auth";
 
 // Create context with undefined default
 export const AuthContext = createContext<AuthContextType | undefined>(

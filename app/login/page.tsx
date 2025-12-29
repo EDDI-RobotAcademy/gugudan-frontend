@@ -1,11 +1,11 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { useEffect } from "react";
+import {useRouter} from "next/navigation";
+import {useEffect} from "react";
 
-import {GoogleLoginButton, KakaoLoginButton, NaverLoginButton, MetaLoginButton, } from "@/components/auth/LoginButton";
-import { useAuth } from "@/hooks/useAuth";
-import { ROUTES } from "@/lib/constants";
+import {GoogleLoginButton, KakaoLoginButton, NaverLoginButton,} from "@/components/auth/LoginButton";
+import {useAuth} from "@/hooks/useAuth";
+import {ROUTES} from "@/lib/constants";
 
 export default function LoginPage() {
   const { isAuthenticated, isLoading } = useAuth();

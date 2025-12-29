@@ -1,20 +1,14 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useAuth } from "@/hooks/useAuth";
-import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
-import { api } from "@/lib/api";
-import {
-  FAQ,
-  FAQCategory,
-  CreateFAQRequest,
-  UpdateFAQRequest,
-  FAQ_CATEGORY_LABELS,
-} from "@/types/faq";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/Card";
-import { Button } from "@/components/ui/Button";
-import { Badge } from "@/components/ui/Badge";
-import { Plus, X, Edit, Trash2, Eye, EyeOff } from "lucide-react";
+import {useEffect, useState} from "react";
+import {useAuth} from "@/hooks/useAuth";
+import {ProtectedRoute} from "@/components/auth/ProtectedRoute";
+import {api} from "@/lib/api";
+import {CreateFAQRequest, FAQ, FAQ_CATEGORY_LABELS, FAQCategory, UpdateFAQRequest,} from "@/types/faq";
+import {Card, CardContent, CardDescription, CardHeader, CardTitle} from "@/components/ui/Card";
+import {Button} from "@/components/ui/Button";
+import {Badge} from "@/components/ui/Badge";
+import {Edit, Eye, EyeOff, Plus, Trash2, X} from "lucide-react";
 
 function AdminFAQsContent() {
   const { user, isLoading: authLoading } = useAuth();

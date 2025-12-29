@@ -2,8 +2,7 @@ import "./globals.css";
 import type {Metadata} from "next";
 import Script from 'next/script';
 import {AuthProvider} from "@/components/auth/AuthProvider";
-import { AppHeader } from "@/components/layout/AppHeader";
-import { AppFooter } from "@/components/layout/AppFooter";
+import {AppHeader} from "@/components/layout/AppHeader";
 
 export const metadata: Metadata = {
     title: "Gugudan - AI Counselor",
@@ -60,7 +59,6 @@ export default function RootLayout({
         <AuthProvider>
         <AppHeader />
             {children}
-        <AppFooter />
         </AuthProvider>
         </body>
         </html>

@@ -1,23 +1,23 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useAuth } from "@/hooks/useAuth";
-import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
-import { api } from "@/lib/api";
+import {useEffect, useState} from "react";
+import {useAuth} from "@/hooks/useAuth";
+import {ProtectedRoute} from "@/components/auth/ProtectedRoute";
+import {api} from "@/lib/api";
 import {
-  Inquiry,
-  InquiryDetailResponse,
-  InquiryReply,
-  InquiryStatus,
-  CreateInquiryReplyRequest,
-  UpdateInquiryStatusRequest,
-  INQUIRY_CATEGORY_LABELS,
-  INQUIRY_STATUS_LABELS,
+    CreateInquiryReplyRequest,
+    Inquiry,
+    INQUIRY_CATEGORY_LABELS,
+    INQUIRY_STATUS_LABELS,
+    InquiryDetailResponse,
+    InquiryReply,
+    InquiryStatus,
+    UpdateInquiryStatusRequest,
 } from "@/types/inquiry";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/Card";
-import { Button } from "@/components/ui/Button";
-import { Badge } from "@/components/ui/Badge";
-import { X, Send } from "lucide-react";
+import {Card, CardContent, CardDescription, CardHeader, CardTitle} from "@/components/ui/Card";
+import {Button} from "@/components/ui/Button";
+import {Badge} from "@/components/ui/Badge";
+import {Send, X} from "lucide-react";
 
 function AdminInquiriesContent() {
   const { user, isLoading: authLoading } = useAuth();

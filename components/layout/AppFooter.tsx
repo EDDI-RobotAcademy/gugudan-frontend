@@ -1,9 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useAuth } from "@/hooks/useAuth";
-import { UserRole } from "@/types/auth";
-import { useState } from "react";
+import {useAuth} from "@/hooks/useAuth";
+import {UserRole} from "@/types/auth";
+import {useState} from "react";
 import Modal from "@/components/modal/Modal";
 import TermsContent from "@/components/legal/TermsContent";
 import PrivacyContent from "@/components/legal/PrivacyContent";

@@ -1,13 +1,13 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { api } from "@/lib/api";
-import { FAQ, FAQCategory, FAQ_CATEGORY_LABELS } from "@/types/faq";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/Card";
-import { Button } from "@/components/ui/Button";
-import { Badge } from "@/components/ui/Badge";
-import { Search, ChevronDown, ChevronUp } from "lucide-react";
+import {useEffect, useState} from "react";
+import {useRouter} from "next/navigation";
+import {api} from "@/lib/api";
+import {FAQ, FAQ_CATEGORY_LABELS, FAQCategory} from "@/types/faq";
+import {Card, CardContent, CardDescription, CardHeader, CardTitle} from "@/components/ui/Card";
+import {Button} from "@/components/ui/Button";
+import {Badge} from "@/components/ui/Badge";
+import {ChevronDown, ChevronUp, Search} from "lucide-react";
 
 export default function FAQPage() {
   const router = useRouter();
