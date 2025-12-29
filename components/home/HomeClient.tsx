@@ -1,14 +1,12 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import Link from "next/link";
+import {useMemo, useState} from "react";
 import Image from "next/image";
 
-import { useAuth } from "@/hooks/useAuth";
-import { ROUTES } from "@/lib/constants";
-import { Button } from "@/components/ui/Button";
-import { useRouter } from "next/navigation";
-import { startNewChat } from "@/lib/chatNav";
+import {useAuth} from "@/hooks/useAuth";
+import {Button} from "@/components/ui/Button";
+import {useRouter} from "next/navigation";
+import {startNewChat} from "@/lib/chatNav";
 import AppFooter from "../layout/AppFooter";
 import ServiceSection from "@/components/home/ServiceSection";
 import MbtiSection from "@/components/home/MbtiSection";

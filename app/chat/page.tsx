@@ -1,8 +1,9 @@
 "use client";
-import { useState, useCallback } from "react";
-import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
-import { ChatRoomList } from "@/components/chat/ChatRoomList";
-import { ChatRoomView } from "@/components/chat/ChatRoomView";
+import {useCallback, useState} from "react";
+import {ProtectedRoute} from "@/components/auth/ProtectedRoute";
+import {ChatRoomList} from "@/components/chat/ChatRoomList";
+import {ChatRoomView} from "@/components/chat/ChatRoomView";
+
 const STORAGE_KEY = "selectedRoomId";
 export default function ChatPage() {
   // :흰색_확인_표시: 1) /chat 진입 시 저장된 roomId 복원

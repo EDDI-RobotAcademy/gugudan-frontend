@@ -1,9 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { Button } from "@/components/ui/Button";
-import { useAuth } from "@/hooks/useAuth";
-import { ROUTES } from "@/lib/constants";
+import {Button} from "@/components/ui/Button";
+import {useAuth} from "@/hooks/useAuth";
+import {ROUTES} from "@/lib/constants";
 
 export function AppHeader() {
   const { user, isAuthenticated, isLoading, logout } = useAuth();

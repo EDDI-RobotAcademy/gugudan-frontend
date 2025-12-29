@@ -1,9 +1,9 @@
 "use client";
 
-import { useContext } from "react";
+import {useContext} from "react";
 
-import { AuthContext } from "@/components/auth/AuthProvider";
-import type { AuthContextType } from "@/types/auth";
+import {AuthContext} from "@/components/auth/AuthProvider";
+import type {AuthContextType} from "@/types/auth";
 
 /**
  * Hook to access authentication state and actions

@@ -1,8 +1,8 @@
 "use client";
 
-import { useAuth } from "@/hooks/useAuth";
-import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
-import { MyPage } from "@/components/my/MyPage";
+import {useAuth} from "@/hooks/useAuth";
+import {ProtectedRoute} from "@/components/auth/ProtectedRoute";
+import {MyPage} from "@/components/my/MyPage";
 
 export default function MyPageRoute() {
   const { isLoading } = useAuth();
