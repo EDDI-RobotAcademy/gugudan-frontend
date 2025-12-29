@@ -102,7 +102,7 @@ export default function FAQPage() {
               {/* Category Filter */}
               <div className="mb-6 flex flex-wrap gap-2">
                 <Button
-                  variant={selectedCategory === "ALL" ? "default" : "outline"}
+                  variant={selectedCategory === "ALL" ? "primary" : "outline"}
                   size="sm"
                   onClick={() => setSelectedCategory("ALL")}
                 >
@@ -111,7 +111,7 @@ export default function FAQPage() {
                 {Object.entries(FAQ_CATEGORY_LABELS).map(([category, label]) => (
                   <Button
                     key={category}
-                    variant={selectedCategory === category ? "default" : "outline"}
+                    variant={selectedCategory === category ? "primary" : "outline"}
                     size="sm"
                     onClick={() => setSelectedCategory(category as FAQCategory)}
                   >
