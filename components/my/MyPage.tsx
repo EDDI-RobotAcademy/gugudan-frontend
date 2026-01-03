@@ -105,15 +105,37 @@ export function MyPage() {
   const [roomsLoading, setRoomsLoading] = useState(false);
   const [roomsError, setRoomsError] = useState<string | null>(null);
 
-  // user 로드/변경 시 초기화
+  // 최신 프로필 정보 가져오기
+  const fetchLatestProfile = useCallback(async () => {
+    try {
+      const res = await fetch(`${API_BASE}/api/v1/auth/me`, {
+        method: "GET",
+        credentials: "include",
+      });
+
+      if (!res.ok) {
+        throw new Error(`프로필 조회 실패: ${res.status}`);
+      }
+
+      const data = await res.json();
+      const g = data?.gender ?? "";
+      const m = data?.mbti ?? "";
+      
+      setProfileGender(g);
+      setProfileMbti(m);
+      setEditGender(g);
+      setEditMbti(m);
+    } catch (e: any) {
+      console.error("프로필 조회 실패:", e);
+    }
+  }, [API_BASE]);
+
+  // 컴포넌트 마운트 시 최신 정보 조회
   useEffect(() => {
-    const g = (user as any)?.gender ?? "";
-    const m = (user as any)?.mbti ?? "";
-    setEditGender(g || "");
-    setEditMbti(m || "");
-    setProfileGender(g || "");
-    setProfileMbti(m || "");
-  }, [user]);
+    if (!user) return;
+    fetchLatestProfile();
+  }, [user, fetchLatestProfile]);
+
 
   const fetchRooms = useCallback(async () => {
     if (!user) return;
@@ -257,16 +279,8 @@ export function MyPage() {
       setIsEditingProfile(false);
       alert("저장되었습니다.");
 
-      // (선택) 서버 값으로 재동기화
-      const meRes = await fetch(`${API_BASE}/api/v1/account/my`, {
-        method: "GET",
-        credentials: "include",
-      });
-      if (meRes.ok) {
-        const me = await meRes.json();
-        setProfileGender(me?.gender ?? nextGender);
-        setProfileMbti(me?.mbti ?? nextMbti);
-      }
+      // /api/v1/auth/me로 최신 정보 재조회
+      await fetchLatestProfile();
     } catch (e: any) {
       alert(e?.message ?? "저장 중 오류가 발생했습니다.");
     } finally {
