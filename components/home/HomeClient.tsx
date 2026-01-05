@@ -11,6 +11,7 @@ import AppFooter from "../layout/AppFooter";
 import ServiceSection from "@/components/home/ServiceSection";
 import MbtiSection from "@/components/home/MbtiSection";
 import TeamSection from "@/components/home/TeamSection";
+import ScrollToTopButton from "@/components/ui/ScrollToTopButton";
 
 type ConsultationTopic = "marriage" | "dating" | "crush" | null;
 
@@ -153,6 +154,7 @@ const canStart = !isLoading && isAuthenticated;
     <MbtiSection />
     <TeamSection />
     <AppFooter/>
+    <ScrollToTopButton />
     </div>
   );
 }

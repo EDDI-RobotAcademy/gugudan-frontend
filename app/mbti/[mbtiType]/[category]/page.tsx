@@ -1,4 +1,3 @@
-// app/mbti/[mbtiType]/[category]/page.tsx
 import type { Metadata } from "next";
 import MBTIDetailClient from "./MBTIDetailClient";
 
@@ -17,20 +16,16 @@ function safeCategory(raw: string): CategoryKey {
 
 function safeMbti(raw: string): string {
   const m = (raw ?? "").toUpperCase();
-  // ✅ mbtiMeta에 없는 값이면 fallback
   return VALID_MBTI.has(m) ? m : "MBTI";
 }
 
-async function resolveParams(
-  params: { mbtiType: string; category: string } | Promise<{ mbtiType: string; category: string }>
-) {
-  return await Promise.resolve(params);
-}
+type Params = { mbtiType: string; category: string };
 
 export async function generateMetadata(
-  { params }: { params: { mbtiType: string; category: string } | Promise<{ mbtiType: string; category: string }> }
+  { params }: { params: Promise<Params> }
 ): Promise<Metadata> {
-  const { mbtiType, category: categoryRaw } = await resolveParams(params);
+  const { mbtiType, category: categoryRaw } = await params;
+
   const mbti = safeMbti(mbtiType);
   const category = safeCategory(categoryRaw);
 
@@ -42,15 +37,17 @@ export async function generateMetadata(
     `${mbtiMeta.name}${mbtiMeta.oneLiner ? ` · ${mbtiMeta.oneLiner}` : ""} — ` +
     `MBTI 기반으로 ${cat.title}에서 자주 생기는 흐름과 대화 포인트를 정리했어요.`;
 
-  const url = `${SITE_URL}/mbti/${mbtiType}/${category}`;
+  // ✅ canonical은 "정규화된 값"으로 고정 (SEO 안정)
+  const canonicalPath = `/mbti/${mbti.toLowerCase()}/${category}`;
+  const canonicalUrl = `${SITE_URL}${canonicalPath}`;
 
   return {
     title,
     description,
-    alternates: { canonical: url },
+    alternates: { canonical: canonicalPath }, // ✅ 경로로
     openGraph: {
       type: "article",
-      url,
+      url: canonicalUrl,
       siteName: SITE_NAME,
       locale: "ko_KR",
       title: `${title} | ${SITE_NAME}`,
