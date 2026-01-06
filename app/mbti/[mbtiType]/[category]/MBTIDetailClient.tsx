@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useMemo } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { ArrowLeft, Heart, Lightbulb, MessageCircle, TrendingUp } from "lucide-react";
@@ -10,8 +10,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { categoryInfo, type CategoryKey } from "@/app/mbti/_content/categoryInfo";
 import { mbtiDescriptions } from "@/app/mbti/_content/mbtiMeta";
 import { cognitiveFunctions } from "@/app/mbti/_content/cognitiveFunctions";
-import { cognitiveGlossary } from "@/app/mbti/_content/cognitiveGlossary";
 import { buildFaqs, buildFaqJsonLd } from "@/app/mbti/_content/mbtiFaq";
+import { getTopicsByCategory } from "@/app/mbti/_content/faqTopics";
 
 import {
   getMbtiCategorySections,
@@ -30,20 +30,143 @@ const ICON_MAP: Record<SectionIconKey, React.ComponentType<{ className?: string 
   TrendingUp,
 };
 
+function safeCategory(raw: string): CategoryKey {
+  return (["marriage", "dating", "crush"].includes(raw) ? raw : "dating") as CategoryKey;
+}
+
 export default function MBTIDetailClient() {
-  const params = useParams<{ mbtiType: string; category: string }>();
+  const params = useParams<{ mbtiType?: string; category?: string }>();
   const router = useRouter();
   const { isAuthenticated, isLoading } = useAuth();
+// 컴포넌트 내부 상단
+const [selectedCategory, setSelectedCategory] = React.useState<string | null>(null);
 
+// 카테고리별 예시 데이터 함수
+function getCategoryExamples(category: string) {
+  const examples = {
+    thinking: [
+      {
+        key: "Ti",
+        icon: "🤔",
+        type: "논리 분석",
+        reaction: "왜 헤어졌어? 원인이 뭐였어?",
+        explanation: "내 머릿속 논리로 상황을 분석하려고 해요",
+        borderColor: "border-purple-400 dark:border-purple-600",
+        bgGradient: "from-purple-50/50 to-transparent dark:from-purple-900/20 dark:to-transparent",
+        badgeStyle: "bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-300"
+      },
+      {
+        key: "Te",
+        icon: "📊",
+        type: "해결책 제시",
+        reaction: "그래서 이제 어떻게 할 거야?",
+        explanation: "실질적인 다음 행동에 집중해요",
+        borderColor: "border-blue-400 dark:border-blue-600",
+        bgGradient: "from-blue-50/50 to-transparent dark:from-blue-900/20 dark:to-transparent",
+        badgeStyle: "bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300"
+      }
+    ],
+    feeling: [
+      {
+        key: "Fi",
+        icon: "💭",
+        type: "내 경험 공감",
+        reaction: "너 진짜 힘들겠다... 나도 그랬었어",
+        explanation: "내 감정과 경험을 기반으로 공감해요",
+        borderColor: "border-pink-400 dark:border-pink-600",
+        bgGradient: "from-pink-50/50 to-transparent dark:from-pink-900/20 dark:to-transparent",
+        badgeStyle: "bg-pink-100 dark:bg-pink-900/50 text-pink-700 dark:text-pink-300"
+      },
+      {
+        key: "Fe",
+        icon: "🤗",
+        type: "즉각 위로",
+        reaction: "괜찮아? 울어도 돼, 내가 옆에 있을게",
+        explanation: "상대의 감정에 즉시 반응하고 위로해요",
+        borderColor: "border-rose-400 dark:border-rose-600",
+        bgGradient: "from-rose-50/50 to-transparent dark:from-rose-900/20 dark:to-transparent",
+        badgeStyle: "bg-rose-100 dark:bg-rose-900/50 text-rose-700 dark:text-rose-300"
+      }
+    ],
+    intuition: [
+      {
+        key: "Ni",
+        icon: "🔮",
+        type: "의미 찾기",
+        reaction: "이번 일로 네가 뭘 깨달았을까?",
+        explanation: "경험의 깊은 의미와 통찰을 찾아요",
+        borderColor: "border-indigo-400 dark:border-indigo-600",
+        bgGradient: "from-indigo-50/50 to-transparent dark:from-indigo-900/20 dark:to-transparent",
+        badgeStyle: "bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300"
+      },
+      {
+        key: "Ne",
+        icon: "🌈",
+        type: "가능성 제시",
+        reaction: "혼자 여행도 가보고, 새로운 사람도 만나고!",
+        explanation: "다양한 가능성과 새로운 방향을 제시해요",
+        borderColor: "border-sky-400 dark:border-sky-600",
+        bgGradient: "from-sky-50/50 to-transparent dark:from-sky-900/20 dark:to-transparent",
+        badgeStyle: "bg-sky-100 dark:bg-sky-900/50 text-sky-700 dark:text-sky-300"
+      }
+    ],
+    sensing: [
+      {
+        key: "Si",
+        icon: "📚",
+        type: "과거 회상",
+        reaction: "너희 처음 만났을 때 얼마나 좋아했는데...",
+        explanation: "과거의 구체적인 기억을 떠올려요",
+        borderColor: "border-amber-400 dark:border-amber-600",
+        bgGradient: "from-amber-50/50 to-transparent dark:from-amber-900/20 dark:to-transparent",
+        badgeStyle: "bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300"
+      },
+      {
+        key: "Se",
+        icon: "⚡",
+        type: "즉시 행동",
+        reaction: "오늘 저녁이나 먹으러 가자, 맛있는 거 먹으면서 풀어",
+        explanation: "지금 당장 할 수 있는 행동에 집중해요",
+        borderColor: "border-red-400 dark:border-red-600",
+        bgGradient: "from-red-50/50 to-transparent dark:from-red-900/20 dark:to-transparent",
+        badgeStyle: "bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-300"
+      }
+    ]
+  };
+
+  return examples[category as keyof typeof examples] || [];
+}
+  // ✅ params는 "가끔" 첫 렌더에 비어있을 수 있어서 안전 처리
   const mbtiType = (params?.mbtiType ?? "").toString();
   const categoryRaw = (params?.category ?? "dating").toString();
 
+  // ✅ mbtiType이 비면 화면을 억지로 그리지 말고 안전하게 리턴
+  if (!mbtiType) {
+    return (
+      <div className="min-h-screen bg-white dark:bg-neutral-950">
+        <div className="pt-24 pb-16">
+          <div className="max-w-6xl mx-auto px-6">
+            <div className="rounded-2xl border border-gray-200 dark:border-white/10 p-6 text-gray-600 dark:text-gray-300">
+              페이지 정보를 불러오는 중...
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   const mbtiUpperCase = mbtiType.toUpperCase();
-  const category = (["marriage", "dating", "crush"].includes(categoryRaw) ? categoryRaw : "dating") as CategoryKey;
+  const category = safeCategory(categoryRaw);
 
   const currentCategory = categoryInfo[category];
-  const currentMBTI =
-    mbtiDescriptions[mbtiUpperCase] || { name: "MBTI 유형", traits: [], oneLiner: "" };
+  const currentMBTI = mbtiDescriptions[mbtiUpperCase] || {
+    name: "MBTI 유형",
+    traits: [],
+    oneLiner: "",
+  };
+
+  const basePath = useMemo(() => `/mbti/${mbtiType}/${category}`, [mbtiType, category]);
+  const faqIndexPath = useMemo(() => `${basePath}/faq`, [basePath]);
 
   // ✅ 카테고리별 + MBTI별 섹션
   const sections = getMbtiCategorySections(mbtiUpperCase, category);
@@ -60,6 +183,16 @@ export default function MBTIDetailClient() {
   // ✅ FAQPage JSON-LD
   const faqJsonLd = buildFaqJsonLd(faqs);
 
+  const handleBack = () => {
+    track("mbti_back", { mbtiType: mbtiUpperCase, category });
+
+    if (typeof window !== "undefined" && window.history.length > 1) {
+      router.back();
+      return;
+    }
+    router.push("/");
+  };
+
   return (
     <div className="min-h-screen bg-white dark:bg-neutral-950">
       {/* ✅ SEO: FAQPage JSON-LD */}
@@ -69,19 +202,6 @@ export default function MBTIDetailClient() {
 
       <div className="pt-24 pb-16">
         <div className="max-w-6xl mx-auto px-6">
-          {/* back */}
-          <button
-            type="button"
-            onClick={() => {
-              track("mbti_back_to_home", { mbtiType: mbtiUpperCase, category });
-              router.push("/");
-            }}
-            className="inline-flex items-center gap-2 text-gray-600 hover:text-purple-600 dark:text-gray-300 dark:hover:text-purple-300 transition-colors mb-8"
-          >
-            <ArrowLeft className="w-5 h-5" />
-            홈으로 돌아가기
-          </button>
-
           {/* Hero */}
           <div className={`bg-gradient-to-br ${currentCategory.bg} rounded-3xl p-8 md:p-12 mb-12`}>
             <div className="max-w-4xl mx-auto text-center">
@@ -192,127 +312,275 @@ export default function MBTIDetailClient() {
             </div>
           </div>
 
-          {/* SEO Content (FAQ Accordion + JSON-LD) */}
-          {faqs.length > 0 && (
-            <div className="max-w-4xl mx-auto mt-12">
-              <div className="bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-2xl p-8">
-                <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">
-                  {mbtiUpperCase} {currentCategory.title} - 자주 묻는 질문
-                </h2>
-
-                <div className="mt-6 space-y-3">
-                  {faqs.map((f, idx) => (
-                    <details
-                      key={idx}
-                      className="group bg-white dark:bg-neutral-950 border border-gray-200 dark:border-white/10 rounded-xl px-5 py-4"
-                    >
-                      <summary className="cursor-pointer list-none flex items-start justify-between gap-4">
-                        <h3 className="font-semibold text-gray-900 dark:text-gray-100 leading-relaxed">
-                          {f.q}
-                        </h3>
-                        <span className="mt-1 text-gray-400 group-open:rotate-180 transition-transform">
-                          ▼
-                        </span>
-                      </summary>
-
-                      <div className="mt-3 text-gray-600 dark:text-gray-300 leading-relaxed">{f.a}</div>
-                    </details>
-                  ))}
+          {/* FAQ Preview */}
+          <div className="max-w-4xl mx-auto mt-12">
+            <div className="bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-2xl p-8">
+              <div className="flex items-start justify-between gap-4 flex-wrap">
+                <div>
+                  <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">
+                    {mbtiUpperCase} {currentCategory.title} - 자주 묻는 질문
+                  </h2>
+                  <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
+                    토픽을 눌러서 바로 확인해보세요.
+                  </p>
                 </div>
 
-                <p className="mt-6 text-xs text-gray-500 dark:text-gray-400">
-                  ※ MBTI 성향 기반 참고용 요약이며, 개인차가 있을 수 있어요.
-                </p>
+                <Link
+                  href={`/mbti/${mbtiType}/${category}/faq`}
+                  className="text-sm font-medium text-purple-700 dark:text-purple-200 hover:underline"
+                  onClick={() => track("mbti_faq_all_click", { mbtiType: mbtiUpperCase, category })}
+                >
+                  전체 FAQ 보기 →
+                </Link>
               </div>
+
+              {/* ✅ 카테고리별 토픽 칩 */}
+              <div className="mt-5 flex flex-wrap gap-2">
+                {getTopicsByCategory(category).map((t) => (
+                  <Link
+                    key={t.key}
+                    href={`/mbti/${mbtiType}/${category}/faq/${t.key}`}
+                    className="px-3 py-2 rounded-full bg-white dark:bg-neutral-950 border border-gray-200 dark:border-white/10 text-sm text-gray-800 dark:text-gray-100 hover:shadow-sm transition"
+                    onClick={() =>
+                      track("mbti_faq_topic_click", { mbtiType: mbtiUpperCase, category, topic: t.key })
+                    }
+                    aria-label={`${t.title} FAQ 보기`}
+                  >
+                    {t.title}
+                  </Link>
+                ))}
+              </div>
+              
+              <p className="mt-6 text-xs text-gray-500 dark:text-gray-400">
+                ※ MBTI 성향 기반 참고용 요약이며, 개인차가 있을 수 있어요.
+              </p>
             </div>
-          )}
+          </div>
 
           {/* Cognitive Functions (Optional / Advanced) */}
           {cognitiveFunctions[mbtiUpperCase] && (
             <div className="max-w-4xl mx-auto mt-12">
-              <details className="group bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-2xl p-8">
-                <summary className="cursor-pointer list-none flex items-center justify-between">
-                  <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100">
-                    심화 · {mbtiUpperCase}의 인지 기능으로 보는 관계 패턴
-                  </h2>
+              <details className="group bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-2xl overflow-hidden">
+                <summary className="cursor-pointer list-none flex items-center justify-between p-8 hover:bg-gray-50 dark:hover:bg-white/5 transition-colors">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white font-bold">
+                      💡
+                    </div>
+                    <div>
+                      <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100">
+                        심화 · {mbtiUpperCase}의 인지 기능으로 보는 관계 패턴
+                      </h2>
+                      <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+                        아래 내용은 성향을 이해하기 위한 참고용 설명이에요
+                      </p>
+                    </div>
+                  </div>
                   <span className="text-gray-400 group-open:rotate-180 transition-transform">▼</span>
                 </summary>
 
-                <div className="mt-6 space-y-6 text-gray-700 dark:text-gray-200">
-                  <p className="text-sm text-gray-500 dark:text-gray-400">
-                    ※ 아래 내용은 성향을 이해하기 위한 참고용 설명이에요.
-                  </p>
-
+                <div className="p-8 pt-0 space-y-6">
+                  {/* 주기능·보조기능 vs 3차·열등기능 */}
                   <div className="grid md:grid-cols-2 gap-4">
-                    <div>
-                      <h4 className="font-semibold">주기능 · 보조기능</h4>
-                      <p className="mt-2 text-sm">
+                    <div className="bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 rounded-xl p-5 border border-purple-100 dark:border-purple-800/30">
+                      <h4 className="font-bold text-purple-900 dark:text-purple-100 mb-2">
+                        주기능 · 보조기능
+                      </h4>
+                      <p className="text-sm text-gray-700 dark:text-gray-300">
                         {cognitiveFunctions[mbtiUpperCase].dominant},{" "}
                         {cognitiveFunctions[mbtiUpperCase].auxiliary}
                       </p>
                     </div>
 
-                    <div>
-                      <h4 className="font-semibold">3차 · 열등기능</h4>
-                      <p className="mt-2 text-sm">
+                    <div className="bg-gradient-to-br from-blue-50 to-cyan-50 dark:from-blue-900/20 dark:to-cyan-900/20 rounded-xl p-5 border border-blue-100 dark:border-blue-800/30">
+                      <h4 className="font-bold text-blue-900 dark:text-blue-100 mb-2">
+                        3차 · 열등기능
+                      </h4>
+                      <p className="text-sm text-gray-700 dark:text-gray-300">
                         {cognitiveFunctions[mbtiUpperCase].tertiary},{" "}
                         {cognitiveFunctions[mbtiUpperCase].inferior}
                       </p>
                     </div>
                   </div>
 
-                  <div className="bg-gray-50 dark:bg-white/5 rounded-xl p-6 space-y-4">
-                    <p>
-                      <strong>관계에서의 강점</strong>
-                      <br />
-                      {cognitiveFunctions[mbtiUpperCase].summary.strength}
-                    </p>
+                  {/* 관계 패턴 3가지 */}
+                  <details className="group/pattern bg-white dark:bg-white/5 rounded-xl border border-gray-200 dark:border-white/10">
+                    <summary className="cursor-pointer list-none p-5 hover:bg-gray-50 dark:hover:bg-white/5 transition-colors">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xl">💡</span>
+                          <h4 className="font-bold text-gray-900 dark:text-gray-100">
+                            관계 패턴 더 알아보기
+                          </h4>
+                        </div>
+                        <span className="text-gray-400 group-open/pattern:rotate-180 transition-transform">
+                          ▼
+                        </span>
+                      </div>
+                    </summary>
 
-                    <p>
-                      <strong>흔히 생기는 오해</strong>
-                      <br />
-                      {cognitiveFunctions[mbtiUpperCase].summary.risk}
-                    </p>
+                    <div className="p-5 pt-0 space-y-4">
+                      <div className="bg-white dark:bg-neutral-950 rounded-xl p-6 border border-gray-200 dark:border-white/10">
+                        <div className="flex items-start gap-3">
+                          <span className="text-2xl">✨</span>
+                          <div>
+                            <h4 className="font-bold text-gray-900 dark:text-gray-100 mb-2">
+                              관계에서의 강점
+                            </h4>
+                            <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
+                              {cognitiveFunctions[mbtiUpperCase].summary.strength}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
 
-                    <p>
-                      <strong>관계를 위한 작은 팁</strong>
-                      <br />
-                      {cognitiveFunctions[mbtiUpperCase].summary.tip}
-                    </p>
-                  </div>
+                      <div className="bg-white dark:bg-neutral-950 rounded-xl p-6 border border-gray-200 dark:border-white/10">
+                        <div className="flex items-start gap-3">
+                          <span className="text-2xl">🔍</span>
+                          <div>
+                            <h4 className="font-bold text-gray-900 dark:text-gray-100 mb-2">
+                              흔히 생기는 오해
+                            </h4>
+                            <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
+                              {cognitiveFunctions[mbtiUpperCase].summary.risk}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
 
-                  {/* ℹ️ 인지 기능 안내 박스 */}
-                  <div className="rounded-xl border border-purple-100/70 dark:border-purple-300/20 bg-purple-50 dark:bg-purple-500/10 p-4 text-sm">
-                    <div className="flex items-start gap-2">
-                      <span className="mt-0.5">ℹ️</span>
+                      <div className="bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 rounded-xl p-6 border border-green-200 dark:border-green-800/30">
+                        <div className="flex items-start gap-3">
+                          <span className="text-2xl">💚</span>
+                          <div>
+                            <h4 className="font-bold text-green-900 dark:text-green-100 mb-2">
+                              관계를 위한 작은 팁
+                            </h4>
+                            <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
+                              {cognitiveFunctions[mbtiUpperCase].summary.tip}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </details>
+
+                  {/* ℹ️ 인지 기능 안내 박스 - 전체 접기/펼치기 */}
+                  <details className="group/cognitive rounded-xl border-2 border-dashed border-purple-200 dark:border-purple-700/50 bg-purple-50/50 dark:bg-purple-900/10 overflow-hidden">
+                    <summary className="cursor-pointer list-none p-5 hover:bg-purple-100/50 dark:hover:bg-purple-900/20 transition-colors">
+                      <div className="flex items-start gap-3">
+                        <span className="text-xl">ℹ️</span>
+                        <div className="flex-1">
+                          <div className="flex items-center justify-between">
+                            <p className="font-bold text-purple-900 dark:text-purple-100">
+                              인지 기능이란?
+                            </p>
+                            <span className="text-purple-400 group-open/cognitive:rotate-180 transition-transform ml-2">
+                              ▼
+                            </span>
+                          </div>
+                          <p className="text-sm text-purple-700 dark:text-purple-300 mt-1 leading-relaxed">
+                            MBTI를 더 깊이 이해하기 위한 참고 설명이에요.
+                            연애/관계에서 자주 나타나는 생각과 감정 패턴을 이해하는 데 도움을 줘요.
+                          </p>
+                        </div>
+                      </div>
+                    </summary>
+
+                    <div className="p-5 pt-0 space-y-5">
+                      {/* 카테고리 선택 버튼 */}
                       <div>
-                        <p className="font-semibold text-gray-900 dark:text-gray-100">인지 기능이란?</p>
-                        <p className="mt-1 text-gray-600 dark:text-gray-300 leading-relaxed">
-                          MBTI를 더 깊이 이해하기 위한 참고 설명이에요.
-                          <br />
-                          연애/관계에서 자주 나타나는 생각과 감정 패턴을 이해하는 데 도움을 줘요.
-                        </p>
+                        <h4 className="font-bold text-purple-900 dark:text-purple-100 mb-3 text-center">
+                          👇 궁금한 타입을 눌러보세요
+                        </h4>
+                        
+                        <div className="grid grid-cols-2 gap-2">
+                          {[
+                            { key: "thinking", label: "사고", icon: "💭", hint: "Ti vs Te", color: "purple" },
+                            { key: "feeling", label: "감정", icon: "❤️", hint: "Fi vs Fe", color: "pink" },
+                            { key: "intuition", label: "직관", icon: "✨", hint: "Ni vs Ne", color: "blue" },
+                            { key: "sensing", label: "감각", icon: "👀", hint: "Si vs Se", color: "green" },
+                          ].map((cat) => (
+                            <button
+                              key={cat.key}
+                              onClick={() => setSelectedCategory(cat.key)}
+                              className={`p-3 rounded-lg border-2 transition-all ${
+                                selectedCategory === cat.key
+                                  ? `bg-${cat.color}-100 dark:bg-${cat.color}-900/30 border-${cat.color}-400 dark:border-${cat.color}-600`
+                                  : `bg-white dark:bg-neutral-900 border-${cat.color}-200 dark:border-${cat.color}-800/30 hover:bg-${cat.color}-50 dark:hover:bg-${cat.color}-900/20`
+                              }`}
+                            >
+                              <div className="text-center">
+                                <div className="flex items-center justify-center gap-2 mb-1.5">
+                                  <span className="text-xl">{cat.icon}</span>
+                                  <p className={`text-base font-bold ${
+                                    selectedCategory === cat.key
+                                      ? `text-${cat.color}-700 dark:text-${cat.color}-300`
+                                      : "text-gray-700 dark:text-gray-300"
+                                  }`}>
+                                    {cat.label}
+                                  </p>
+                                </div>
+                                <p className={`text-xs ${
+                                  selectedCategory === cat.key
+                                    ? `text-${cat.color}-600 dark:text-${cat.color}-400`
+                                    : "text-gray-500 dark:text-gray-400"
+                                }`}>
+                                  {cat.hint}
+                                </p>
+                              </div>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
 
-                        <details className="mt-3">
-                          <summary className="cursor-pointer select-none text-purple-700 dark:text-purple-200 font-medium hover:underline">
-                            용어를 쉽게 보기
-                          </summary>
+                      {/* 같은 상황, 다른 반응 */}
+                      {selectedCategory && (
+                        <div className="bg-white dark:bg-neutral-900 rounded-xl p-5 border border-purple-200 dark:border-purple-800/30">
+                          <div className="flex items-center gap-2 mb-4">
+                            <span className="text-2xl">💬</span>
+                            <div>
+                              <h4 className="font-bold text-purple-900 dark:text-purple-100">
+                                같은 상황, 다른 반응
+                              </h4>
+                              <p className="text-sm text-purple-600 dark:text-purple-400">
+                                "친구가 이별했어" 상황에서 각 기능별 반응
+                              </p>
+                            </div>
+                          </div>
 
-                          <div className="mt-3 grid gap-3 md:grid-cols-2 text-gray-600 dark:text-gray-300">
-                            {cognitiveGlossary.items.map((g) => (
+                          <div className="space-y-3">
+                            {getCategoryExamples(selectedCategory).map((example) => (
                               <div
-                                key={g.key}
-                                className="rounded-lg bg-white dark:bg-neutral-950 p-3 border border-purple-100/70 dark:border-white/10"
+                                key={example.key}
+                                className={`p-4 rounded-lg border-l-4 ${example.borderColor} bg-gradient-to-r ${example.bgGradient}`}
                               >
-                                <p className="font-semibold text-gray-900 dark:text-gray-100">{g.title}</p>
-                                <p className="mt-1 text-sm">{g.desc}</p>
+                                <div className="flex items-start justify-between gap-3 mb-2">
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-lg">{example.icon}</span>
+                                    <span className="font-bold text-gray-900 dark:text-gray-100">
+                                      {example.key}
+                                    </span>
+                                  </div>
+                                  <span className={`text-xs px-2 py-1 rounded-full ${example.badgeStyle}`}>
+                                    {example.type}
+                                  </span>
+                                </div>
+                                <p className="text-sm text-gray-700 dark:text-gray-300 mb-2 italic">
+                                  "{example.reaction}"
+                                </p>
+                                <p className="text-xs text-gray-600 dark:text-gray-400">
+                                  {example.explanation}
+                                </p>
                               </div>
                             ))}
                           </div>
-                        </details>
-                      </div>
+                        </div>
+                      )}
+
+                      <p className="text-xs text-purple-600/80 dark:text-purple-400/80 italic text-center">
+                        ※ 정답이나 성격을 규정하는 설명이 아니라, 나를 이해하기 위한 하나의 관점이에요.
+                      </p>
                     </div>
-                  </div>
+                  </details>
                 </div>
               </details>
             </div>

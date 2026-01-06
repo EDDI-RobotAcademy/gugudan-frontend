@@ -3,6 +3,9 @@
 import {useEffect, useRef, useState} from "react";
 import {ChatMessage} from "./ChatMessage";
 import {Feedback} from "./Feedback";
+// import {SurveyModal} from "../modal/Surveymodal";
+// import SurveyTestButton from "@/components/home/SurveyTestButton";
+
 import {
     ArrowsRightLeftIcon,
     ChatBubbleLeftEllipsisIcon,
@@ -24,6 +27,11 @@ type Message = {
   user_feedback?: "LIKE" | "DISLIKE" | null;
   file_urls?: string[];
 };
+// 설문조사 관련 상수
+// const SURVEY_STORAGE_KEY = "chat_message_count";
+// const SURVEY_COMPLETED_KEY = "survey_completed";
+// const SURVEY_TRIGGER_COUNT = 2; // 2회 채팅 후 설문조사
+
 type RoomStatus = "ACTIVE" | "LOCKED" | "ENDED" | "UNKNOWN";
 
 interface Props {
@@ -52,6 +60,9 @@ export function ChatRoomView({ roomId, onRoomCreated }: Props) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [targetMessageId, setTargetMessageId] = useState<number | null>(null);
   const [feedbackScore, setFeedbackScore] = useState<"LIKE" | "DISLIKE" | null>(null);
+  // 설문조사 상태
+  // const [isSurveyOpen, setIsSurveyOpen] = useState(false);
+  // const [messageCount, setMessageCount] = useState(0);
 
   const MAX_FILES = 4;
   const [selectedFiles, setSelectedFiles] = useState<FileItem[]>([]);
@@ -75,6 +86,50 @@ export function ChatRoomView({ roomId, onRoomCreated }: Props) {
   useEffect(() => {
     inputRef.current?.focus();
   }, [roomId]);
+
+  // 초기 카운트 로드
+  // useEffect(() => {
+  //   if (typeof window !== "undefined") {
+  //     const savedCount = localStorage.getItem(SURVEY_STORAGE_KEY);
+  //     setMessageCount(savedCount ? parseInt(savedCount, 10) : 0);
+  //   }
+  // }, []);
+
+  // 설문조사 체크 함수
+  // const checkSurveyTrigger = (count: number) => {
+  //   if (typeof window === "undefined") return;
+
+  //   // const completed = localStorage.getItem(SURVEY_COMPLETED_KEY) === "true";
+  //   // if (completed) return;
+
+  //   if (count >= SURVEY_TRIGGER_COUNT) {
+  //     setIsSurveyOpen(true);
+  //   }
+  // };
+
+
+  // 메시지 카운트 증가 함수
+  // const incrementMessageCount = () => {
+  //   if (typeof window === "undefined") return;
+
+  //   // ✅ localStorage를 source of truth로
+  //   const current = parseInt(localStorage.getItem(SURVEY_STORAGE_KEY) || "0", 10);
+  //   const next = current + 1;
+
+  //   localStorage.setItem(SURVEY_STORAGE_KEY, String(next));
+  //   setMessageCount(next); // UI 표시용이면 유지, 아니면 제거 가능
+
+  //   // ✅ setTimeout 필요 없음 (즉시 판단)
+  //   checkSurveyTrigger(next);
+  // };
+
+  // // 설문조사 완료 핸들러
+  // const handleSurveyComplete = () => {
+  //   if (typeof window !== "undefined") {
+  //     localStorage.setItem(SURVEY_COMPLETED_KEY, "true");
+  //   }
+  //   setIsSurveyOpen(false);
+  // };
 
   // 파일 선택 핸들러
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -300,6 +355,8 @@ const handleSendMessage = async (textToSend?: string) => {
       const newest = rooms[0];
       if (newest?.room_id) onRoomCreated(newest.room_id);
     }
+    // 메시지 전송 성공 후 카운트 증가
+    // incrementMessageCount();
   } catch (error: unknown) {
     if (!(error instanceof Error && error.name === "AbortError")) console.error(error);
   } finally {
@@ -544,6 +601,14 @@ const handleSendMessage = async (textToSend?: string) => {
           </p>
         </div>
       </div>
+      
+      {/* ? 설문조사 팝업 */}
+      {/* <SurveyModal 
+        isOpen={isSurveyOpen}
+        onClose={() => setIsSurveyOpen(false)}
+        onComplete={handleSurveyComplete}
+      /> */}
+
       <Feedback 
         isOpen={isModalOpen}
         feedbackScore={feedbackScore}
@@ -580,6 +645,8 @@ const handleSendMessage = async (textToSend?: string) => {
             }
           }}
         />
+        {/* <SurveyTestButton /> */}
     </div>
+    
   );
 }
