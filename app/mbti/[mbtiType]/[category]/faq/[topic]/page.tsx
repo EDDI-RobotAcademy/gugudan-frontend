@@ -86,16 +86,19 @@ export default async function MbtiFaqTopicPage(
           <div className="mb-8 flex flex-wrap gap-3 items-center">
             <Link
               href={`${basePath}/faq`}
-              className="text-gray-600 hover:text-purple-600 dark:text-gray-400 dark:hover:text-purple-400 transition-colors"
+              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-gray-600 hover:text-purple-600 hover:bg-purple-50 dark:text-gray-400 dark:hover:text-purple-400 dark:hover:bg-purple-900/20 transition-all"
             >
-              ← 주제 선택으로
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              </svg>
+              주제 선택으로
             </Link>
 
-            <span className="text-gray-300 dark:text-gray-700">|</span>
+            <span className="text-gray-300 dark:text-gray-700">/</span>
 
             <Link
               href={basePath}
-              className="text-gray-600 hover:text-purple-600 dark:text-gray-400 dark:hover:text-purple-400 transition-colors"
+              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-gray-600 hover:text-purple-600 hover:bg-purple-50 dark:text-gray-400 dark:hover:text-purple-400 dark:hover:bg-purple-900/20 transition-all"
             >
               {mbtiUpper} × {currentCategory.title} 가이드로
             </Link>

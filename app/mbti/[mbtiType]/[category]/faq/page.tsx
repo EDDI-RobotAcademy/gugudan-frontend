@@ -91,9 +91,12 @@ export default async function MbtiFaqIndexPage(
           <div className="mb-8">
             <Link
               href={basePath}
-              className="inline-flex items-center gap-2 text-gray-600 hover:text-purple-600 dark:text-gray-400 dark:hover:text-purple-400 transition-colors"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-gray-700 hover:text-purple-600 hover:bg-purple-50 dark:text-gray-300 dark:hover:text-purple-400 dark:hover:bg-purple-900/20 transition-all"
             >
-              ← {mbtiUpper} × {currentCategory.title} 가이드로
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              </svg>
+              {mbtiUpper} × {currentCategory.title} 가이드로
             </Link>
           </div>
 
@@ -135,9 +138,12 @@ export default async function MbtiFaqIndexPage(
                   해당 주제에서 많이 나오는 질문을 모아봤어요.
                 </p>
 
-                <p className="mt-4 text-sm font-medium text-purple-700 dark:text-purple-400 group-hover:underline">
-                  주제 보기 →
-                </p>
+                <div className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-purple-600 dark:text-purple-400 group-hover:gap-3 transition-all">
+                  주제 보기
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </div>
               </Link>
             ))}
           </div>

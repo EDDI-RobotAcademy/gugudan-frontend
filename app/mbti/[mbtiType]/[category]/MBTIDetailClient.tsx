@@ -327,10 +327,13 @@ function getCategoryExamples(category: string) {
 
                 <Link
                   href={`/mbti/${mbtiType}/${category}/faq`}
-                  className="text-sm font-medium text-purple-700 dark:text-purple-200 hover:underline"
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-purple-600 text-white text-sm font-medium hover:bg-purple-700 hover:gap-3 transition-all shrink-0"
                   onClick={() => track("mbti_faq_all_click", { mbtiType: mbtiUpperCase, category })}
                 >
-                  전체 FAQ 보기 →
+                  전체 FAQ 보기
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
                 </Link>
               </div>
 
