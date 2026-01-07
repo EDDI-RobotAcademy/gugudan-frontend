@@ -11,7 +11,7 @@ import { getTopicsByCategory } from "@/app/mbti/_content/faqTopics";
 type Params = { mbtiType: string; category: string };
 
 const VALID_CATEGORIES: CategoryKey[] = ["marriage", "dating", "crush"];
-const VALID_MBTI = new Set(Object.keys(mbtiDescriptions)); // "INTJ" ...
+const VALID_MBTI = new Set(Object.keys(mbtiDescriptions));
 
 function safeCategory(raw: string): CategoryKey {
   return VALID_CATEGORIES.includes(raw as CategoryKey) ? (raw as CategoryKey) : "dating";
@@ -23,7 +23,6 @@ function safeMbtiUpper(raw: string): string {
 }
 
 function safeMbtiSlug(raw: string): string {
-  // URL은 소문자 쓰는 걸 추천 (이미 소문자 URL 쓰고 있으면 그대로 유지)
   return (raw ?? "").toString().toLowerCase();
 }
 
@@ -85,34 +84,37 @@ export default async function MbtiFaqIndexPage(
   });
 
   return (
-    <div className="min-h-screen bg-white dark:bg-neutral-950">
+    <div className="min-h-screen bg-white dark:bg-black">
       <div className="pt-24 pb-16">
         <div className="max-w-5xl mx-auto px-6">
           {/* Back */}
           <div className="mb-8">
             <Link
               href={basePath}
-              className="inline-flex items-center gap-2 text-gray-600 hover:text-purple-600 dark:text-gray-300 dark:hover:text-purple-300 transition-colors"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-gray-700 hover:text-purple-600 hover:bg-purple-50 dark:text-gray-300 dark:hover:text-purple-400 dark:hover:bg-purple-900/20 transition-all"
             >
-              ← {mbtiUpper} × {currentCategory.title} 가이드로
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              </svg>
+              {mbtiUpper} × {currentCategory.title} 가이드로
             </Link>
           </div>
 
-          {/* Hero */}
+          {/* Hero - 밝은 배경 → 검은 텍스트 */}
           <div className={`bg-gradient-to-br ${currentCategory.bg} rounded-3xl p-8 md:p-12 mb-10`}>
             <div className="text-center">
               <div className="text-5xl mb-3">❓</div>
 
-              <h1 className="text-2xl md:text-4xl font-extrabold text-gray-900 dark:text-white">
+              <h1 className="text-2xl md:text-4xl font-extrabold text-gray-900">
                 {mbtiUpper} × {currentCategory.title} 자주 묻는 질문
               </h1>
 
-              <p className="mt-3 text-gray-700 dark:text-gray-200">
+              <p className="mt-3 text-gray-800">
                 {currentMBTI.name}
                 {currentMBTI.oneLiner ? ` · ${currentMBTI.oneLiner}` : ""}
               </p>
 
-              <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
+              <p className="mt-2 text-sm text-gray-700">
                 주제별로 골라서 빠르게 확인해보세요.
               </p>
             </div>
@@ -124,26 +126,29 @@ export default async function MbtiFaqIndexPage(
               <Link
                 key={t.key}
                 href={`${basePath}/faq/${t.key}`}
-                className="group rounded-2xl border border-gray-200 dark:border-white/10 bg-white dark:bg-white/5 p-6 hover:shadow-lg transition-all"
+                className="group rounded-2xl border border-gray-200 bg-white p-6 hover:shadow-lg hover:border-purple-200 dark:border-gray-800 dark:bg-gray-900 dark:hover:border-purple-500 transition-all"
               >
                 <div className="flex items-center justify-between">
-                  <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100">
+                  <h2 className="text-lg font-bold text-gray-900 dark:text-white">
                     {t.title}
                   </h2>
                 </div>
 
-                <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
+                <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
                   해당 주제에서 많이 나오는 질문을 모아봤어요.
                 </p>
 
-                <p className="mt-4 text-sm font-medium text-purple-700 dark:text-purple-200 group-hover:underline">
-                  주제 보기 →
-                </p>
+                <div className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-purple-600 dark:text-purple-400 group-hover:gap-3 transition-all">
+                  주제 보기
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </div>
               </Link>
             ))}
           </div>
 
-          <p className="mt-8 text-xs text-gray-500 dark:text-gray-400">
+          <p className="mt-8 text-xs text-gray-500">
             ※ MBTI 성향 기반 참고용 요약이며, 개인차가 있을 수 있어요.
           </p>
         </div>

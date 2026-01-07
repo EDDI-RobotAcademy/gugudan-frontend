@@ -10,14 +10,14 @@ import {Button} from "@/components/ui/Button";
 import {Avatar, AvatarFallback} from "@/components/ui/Avatar";
 import {Badge} from "@/components/ui/Badge";
 import {Tabs, TabsContent, TabsList, TabsTrigger} from "@/components/ui/Tabs";
-import {MessageCircle, User as UserIcon} from "lucide-react";
+import {MessageCircle, User as UserIcon, Sparkles, Heart, Calendar} from "lucide-react";
 
 const STORAGE_KEY = "selectedRoomId";
 
 type ConsultationSession = {
-  id: string; // room_id
-  date: string; // YYYY-MM-DD (created_at 기준)
-  topic: string; // title or category
+  id: string;
+  date: string;
+  topic: string;
   status: "ACTIVE" | "LOCKED" | "ENDED" | "UNKNOWN";
   duration?: string;
 };
@@ -54,10 +54,6 @@ function toYYYYMMDD(iso?: string) {
   return `${yyyy}-${mm}-${dd}`;
 }
 
-/**
- * 서버 응답 -> 화면용 모델로 변환
- * 네 API 응답 형태에 맞춰 여기만 조정하면 됨.
- */
 function normalizeRoom(raw: any): ConsultationSession {
   const id = String(raw?.room_id ?? raw?.id ?? raw?.roomId ?? "");
   const createdAt = raw?.created_at ?? raw?.createdAt ?? raw?.created;
@@ -75,7 +71,7 @@ function normalizeRoom(raw: any): ConsultationSession {
 
 function renderStatusLabel(s: ConsultationSession["status"]) {
   if (s === "ACTIVE") return "진행중";
-  if (s === "LOCKED") return "한도 초과"; // 또는 "이용 제한", "잠김"
+  if (s === "LOCKED") return "한도 초과";
   if (s === "ENDED") return "종료";
   return "알 수 없음";
 }
@@ -90,22 +86,18 @@ export function MyPage() {
   const [activeTab, setActiveTab] = useState("go");
   const [deletingRoomId, setDeletingRoomId] = useState<string | null>(null);
 
-  // 프로필 수정 상태
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [editGender, setEditGender] = useState<string>("");
   const [editMbti, setEditMbti] = useState<string>("");
   const [isSaving, setIsSaving] = useState(false);
 
-  // 화면 표시용 프로필 값
   const [profileGender, setProfileGender] = useState<string>("");
   const [profileMbti, setProfileMbti] = useState<string>("");
 
-  // 상담방 목록 상태
   const [rooms, setRooms] = useState<ConsultationSession[]>([]);
   const [roomsLoading, setRoomsLoading] = useState(false);
   const [roomsError, setRoomsError] = useState<string | null>(null);
 
-  // 최신 프로필 정보 가져오기
   const fetchLatestProfile = useCallback(async () => {
     try {
       const res = await fetch(`${API_BASE}/api/v1/auth/me`, {
@@ -130,12 +122,10 @@ export function MyPage() {
     }
   }, [API_BASE]);
 
-  // 컴포넌트 마운트 시 최신 정보 조회
   useEffect(() => {
     if (!user) return;
     fetchLatestProfile();
   }, [user, fetchLatestProfile]);
-
 
   const fetchRooms = useCallback(async () => {
     if (!user) return;
@@ -196,13 +186,11 @@ export function MyPage() {
           throw new Error(text || `삭제 실패: ${res.status}`);
         }
 
-        // ✅ 선택중이던 room이면 localStorage도 정리
         const selected = localStorage.getItem(STORAGE_KEY);
         if (selected === roomId) {
           localStorage.removeItem(STORAGE_KEY);
         }
 
-        // ✅ 화면에서 제거 (굳이 재조회 안해도 됨)
         setRooms((prev) => prev.filter((r) => r.id !== roomId));
 
         alert("삭제되었습니다.");
@@ -279,7 +267,6 @@ export function MyPage() {
       setIsEditingProfile(false);
       alert("저장되었습니다.");
 
-      // /api/v1/auth/me로 최신 정보 재조회
       await fetchLatestProfile();
     } catch (e: any) {
       alert(e?.message ?? "저장 중 오류가 발생했습니다.");
@@ -289,48 +276,72 @@ export function MyPage() {
   }
 
   return (
-    // ✅ Chat 화면 톤과 통일: 라이트 배경 고정
-    <div className="min-h-[calc(100vh-64px)] bg-white text-gray-900">
+    // ✅ 메인 페이지와 동일한 밝은 배경
+    <div className="min-h-[calc(100vh-64px)] bg-gradient-to-b from-purple-50/30 via-pink-50/20 to-white">
       <div className="container mx-auto px-4 py-8">
         <div className="max-w-6xl mx-auto">
+          {/* 감성적인 헤더 메시지 */}
+          <div className="text-center mb-8 animate-fade-in">
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-purple-100 text-purple-700 text-sm font-medium mb-4">
+              <Sparkles className="w-4 h-4" />
+              당신의 이야기가 여기 있어요
+            </div>
+            {/* ✅ 선명한 그라데이션 제목 */}
+            <h1 className="text-2xl md:text-3xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+              {nickname}님의 공간
+            </h1>
+          </div>
+
           {/* Profile Header */}
-          <Card className="mb-8 border border-gray-200 bg-white">
-            <CardContent className="pt-6">
-              <div className="flex items-start gap-6">
-                <Avatar className="w-24 h-24">
-                  <AvatarFallback className="bg-gray-100 text-gray-700 text-2xl font-semibold">
-                    {getInitials(nickname)}
-                  </AvatarFallback>
-                </Avatar>
+          <Card className="mb-8 border-0 bg-white/90 shadow-xl backdrop-blur-sm overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-br from-purple-500/5 via-pink-500/5 to-transparent pointer-events-none" />
+            
+            <CardContent className="pt-8 pb-6 relative">
+              <div className="flex flex-col md:flex-row items-center md:items-start gap-6">
+                <div className="relative group">
+                  <div className="absolute inset-0 bg-gradient-to-br from-purple-600 to-pink-600 rounded-full blur-lg opacity-30 group-hover:opacity-50 transition-opacity" />
+                  <Avatar className="relative w-24 h-24 border-4 border-white shadow-xl">
+                    <AvatarFallback className="bg-gradient-to-br from-purple-100 to-pink-100 text-purple-700 text-2xl font-bold">
+                      {getInitials(nickname)}
+                    </AvatarFallback>
+                  </Avatar>
+                </div>
 
-                <div className="flex-1">
-                  <h2 className="text-3xl font-bold mb-2">{nickname}</h2>
-                  <p className="text-gray-600 mb-4">{email}</p>
+                <div className="flex-1 text-center md:text-left">
+                  <h2 className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent mb-2">
+                    {nickname}
+                  </h2>
+                  <p className="text-gray-600 mb-6">{email}</p>
 
-                  <div className="flex gap-10">
-                    <div>
-                      <p className="text-sm text-gray-500">가입일</p>
-                      <p className="font-medium">{joinDateText}</p>
+                  <div className="flex flex-wrap justify-center md:justify-start gap-6">
+                    <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-purple-50">
+                      <Calendar className="w-4 h-4 text-purple-600" />
+                      <div>
+                        <p className="text-xs text-gray-500">가입일</p>
+                        <p className="text-sm font-semibold text-gray-900">{joinDateText}</p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-sm text-gray-500">총 상담 횟수</p>
-                      <p className="font-medium">{totalCount}회</p>
+                    <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-pink-50">
+                      <Heart className="w-4 h-4 text-pink-600" />
+                      <div>
+                        <p className="text-xs text-gray-500">총 상담</p>
+                        <p className="text-sm font-semibold text-gray-900">{totalCount}회</p>
+                      </div>
                     </div>
                   </div>
                 </div>
-
-                {/* ✅ 설정 버튼 제거 (요청사항) */}
               </div>
             </CardContent>
           </Card>
 
           {/* Tabs */}
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid w-full grid-cols-3 h-12 rounded-full bg-gray-100 p-1">
+            <TabsList className="grid w-full grid-cols-3 h-14 rounded-2xl bg-white/80 backdrop-blur-sm p-1 shadow-lg border border-gray-100">
               <TabsTrigger
                 value="go"
-                className="flex items-center justify-center gap-2 rounded-full text-sm font-medium text-gray-600 transition
-                  data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow"
+                className="flex items-center justify-center gap-2 rounded-xl text-sm font-medium text-gray-600 transition-all
+                  data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-600 data-[state=active]:to-pink-600 
+                  data-[state=active]:text-white data-[state=active]:shadow-lg"
               >
                 <MessageCircle className="w-4 h-4" />
                 상담 하러가기
@@ -338,17 +349,19 @@ export function MyPage() {
 
               <TabsTrigger
                 value="history"
-                className="flex items-center justify-center gap-2 rounded-full text-sm font-medium text-gray-600 transition
-                  data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow"
+                className="flex items-center justify-center gap-2 rounded-xl text-sm font-medium text-gray-600 transition-all
+                  data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-600 data-[state=active]:to-pink-600 
+                  data-[state=active]:text-white data-[state=active]:shadow-lg"
               >
-                <MessageCircle className="w-4 h-4" />
+                <Sparkles className="w-4 h-4" />
                 상담 이력
               </TabsTrigger>
 
               <TabsTrigger
                 value="profile"
-                className="flex items-center justify-center gap-2 rounded-full text-sm font-medium text-gray-600 transition
-                  data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow"
+                className="flex items-center justify-center gap-2 rounded-xl text-sm font-medium text-gray-600 transition-all
+                  data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-600 data-[state=active]:to-pink-600 
+                  data-[state=active]:text-white data-[state=active]:shadow-lg"
               >
                 <UserIcon className="w-4 h-4" />
                 프로필 정보
@@ -357,21 +370,35 @@ export function MyPage() {
 
             {/* 상담 하러가기 */}
             <TabsContent value="go" className="mt-6">
-              <Card className="border border-gray-200 bg-white">
+              <Card className="border-0 bg-white/90 shadow-lg backdrop-blur-sm">
                 <CardHeader>
-                  <CardTitle>상담 하러가기</CardTitle>
-                  <CardDescription>
-                    원하는 주제로 AI 상담을 시작해보세요.
+                  <CardTitle className="flex items-center gap-2 text-gray-900">
+                    <MessageCircle className="w-5 h-5 text-purple-600" />
+                    새로운 대화를 시작해보세요
+                  </CardTitle>
+                  <CardDescription className="text-gray-600">
+                    지금 마음에 맞는 주제로 AI 상담을 시작할 수 있어요.
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="flex flex-col items-center justify-center py-10 text-center">
-                    <div className="mb-4 text-4xl">💬</div>
-                    <p className="text-gray-600 mb-6">
-                      지금 바로 상담을 시작할 수 있어요.
+                  <div className="flex flex-col items-center justify-center py-16 text-center">
+                    <div className="mb-6 w-20 h-20 rounded-full bg-gradient-to-br from-purple-100 to-pink-100 flex items-center justify-center">
+                      <MessageCircle className="w-10 h-10 text-purple-600" />
+                    </div>
+                    <h3 className="text-xl font-semibold text-gray-900 mb-3">
+                      편안하게 이야기를 시작해보세요
+                    </h3>
+                    <p className="text-gray-600 mb-8 max-w-md">
+                      love-note는 당신의 이야기를 경청하고,
+                      <br />
+                      함께 생각을 정리할 준비가 되어있어요.
                     </p>
 
-                    <Button className="px-8" onClick={() => startNewChat(router, "/chat")}>
+                    <Button 
+                      className="px-8 py-6 text-base bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white shadow-lg hover:shadow-xl transition-all"
+                      onClick={() => startNewChat(router, "/chat")}
+                    >
+                      <MessageCircle className="w-5 h-5 mr-2" />
                       상담 시작하기
                     </Button>
                   </div>
@@ -381,43 +408,58 @@ export function MyPage() {
 
             {/* 상담 이력 */}
             <TabsContent value="history" className="mt-6">
-              <Card className="border border-gray-200 bg-white">
+              <Card className="border-0 bg-white/90 shadow-lg backdrop-blur-sm">
                 <CardHeader>
-                  <CardTitle>상담 이력</CardTitle>
-                  <CardDescription>
-                    지금까지 진행한 AI 상담 기록입니다.
+                  <CardTitle className="flex items-center gap-2 text-gray-900">
+                    <Sparkles className="w-5 h-5 text-purple-600" />
+                    지난 대화들을 돌아봐요
+                  </CardTitle>
+                  <CardDescription className="text-gray-600">
+                    지금까지 나눈 소중한 대화들이에요.
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
                   {roomsLoading ? (
-                    <div className="py-10 text-center text-gray-600">
-                      불러오는 중...
+                    <div className="py-16 text-center">
+                      <div className="w-12 h-12 mx-auto mb-4 rounded-full border-4 border-purple-200 border-t-purple-600 animate-spin" />
+                      <p className="text-gray-600">불러오는 중...</p>
                     </div>
                   ) : roomsError ? (
-                    <div className="py-10 text-center">
-                      <p className="text-sm text-red-600 mb-3">{roomsError}</p>
-                      <Button variant="outline" onClick={fetchRooms}>
+                    <div className="py-16 text-center">
+                      <p className="text-sm text-red-600 mb-4">{roomsError}</p>
+                      <Button 
+                        variant="outline" 
+                        onClick={fetchRooms}
+                        className="border-purple-300 text-purple-700 hover:bg-purple-50"
+                      >
                         다시 시도
                       </Button>
                     </div>
                   ) : rooms.length === 0 ? (
-                    <div className="py-10 text-center text-gray-600">
-                      아직 상담 이력이 없어요.
+                    <div className="py-16 text-center">
+                      <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-gradient-to-br from-purple-100 to-pink-100 flex items-center justify-center">
+                        <MessageCircle className="w-10 h-10 text-gray-400" />
+                      </div>
+                      <p className="text-gray-600 mb-2">아직 상담 이력이 없어요</p>
+                      <p className="text-sm text-gray-500">첫 대화를 시작해보세요!</p>
                     </div>
                   ) : (
                     <div className="space-y-4">
-                      {rooms.map((session) => (
+                      {rooms.map((session, idx) => (
                         <div
                           key={session.id}
-                          className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition"
+                          className="group flex items-center justify-between p-5 border border-gray-100 rounded-2xl hover:border-purple-200 hover:shadow-md transition-all bg-white"
+                          style={{
+                            animation: `fade-in 0.3s ease-out ${idx * 0.05}s both`
+                          }}
                         >
                           <div className="flex items-center gap-4">
-                            <div className="w-12 h-12 bg-pink-50 rounded-full flex items-center justify-center">
-                              <MessageCircle className="w-6 h-6 text-pink-600" />
+                            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-purple-100 to-pink-100 flex items-center justify-center group-hover:scale-110 transition-transform">
+                              <MessageCircle className="w-7 h-7 text-purple-600" />
                             </div>
 
                             <div>
-                              <h4 className="font-semibold mb-1">
+                              <h4 className="font-semibold text-gray-900 mb-1">
                                 {session.topic}
                               </h4>
                               <p className="text-sm text-gray-600">
@@ -432,10 +474,10 @@ export function MyPage() {
                               variant="secondary"
                               className={
                                 session.status === "LOCKED"
-                                  ? "bg-amber-100 text-amber-800"
+                                  ? "bg-amber-100 text-amber-800 border-amber-200"
                                   : session.status === "ENDED"
-                                  ? "bg-gray-100 text-gray-700"
-                                  : "bg-green-100 text-green-800"
+                                  ? "bg-gray-100 text-gray-700 border-gray-200"
+                                  : "bg-green-100 text-green-800 border-green-200"
                               }
                             >
                               {renderStatusLabel(session.status)}
@@ -444,15 +486,22 @@ export function MyPage() {
                             <Button
                               variant="ghost"
                               size="sm"
+                              className="text-purple-600 hover:text-purple-700 hover:bg-purple-50"
                               onClick={() => {
                                 localStorage.setItem(STORAGE_KEY, session.id);
                                 router.push("/chat");
                               }}
                             >
-                              상세보기
+                              이어가기
                             </Button>
-                            <Button variant="outline" size="sm"
-                              onClick={(e) => { e.stopPropagation(); deleteRoom(session.id); }}
+                            <Button 
+                              variant="ghost" 
+                              size="sm"
+                              className="text-gray-500 hover:text-red-600 hover:bg-red-50"
+                              onClick={(e) => { 
+                                e.stopPropagation(); 
+                                deleteRoom(session.id); 
+                              }}
                               disabled={deletingRoomId === session.id}
                             >
                               {deletingRoomId === session.id ? "삭제 중..." : "삭제"}
@@ -468,11 +517,14 @@ export function MyPage() {
 
             {/* 프로필 정보 */}
             <TabsContent value="profile" className="mt-6">
-              <Card className="border border-gray-200 bg-white">
+              <Card className="border-0 bg-white/90 shadow-lg backdrop-blur-sm">
                 <CardHeader>
-                  <CardTitle>프로필 정보</CardTitle>
-                  <CardDescription>
-                    개인 정보를 관리하고 업데이트할 수 있습니다.
+                  <CardTitle className="flex items-center gap-2 text-gray-900">
+                    <UserIcon className="w-5 h-5 text-purple-600" />
+                    나를 더 잘 이해하기 위한 정보
+                  </CardTitle>
+                  <CardDescription className="text-gray-600">
+                    더 나은 상담을 위해 정보를 업데이트할 수 있어요.
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -481,7 +533,7 @@ export function MyPage() {
                       <label className="text-sm font-medium text-gray-700 mb-2 block">
                         이름
                       </label>
-                      <p className="p-3 rounded-md bg-gray-50 text-gray-900 border border-gray-200">
+                      <p className="p-4 rounded-xl bg-gray-50 text-gray-900 border border-gray-200">
                         {nickname}
                       </p>
                     </div>
@@ -490,7 +542,7 @@ export function MyPage() {
                       <label className="text-sm font-medium text-gray-700 mb-2 block">
                         이메일
                       </label>
-                      <p className="p-3 rounded-md bg-gray-50 text-gray-900 border border-gray-200">
+                      <p className="p-4 rounded-xl bg-gray-50 text-gray-900 border border-gray-200">
                         {email}
                       </p>
                     </div>
@@ -502,15 +554,20 @@ export function MyPage() {
                       </label>
 
                       {!isEditingProfile ? (
-                        <div className="flex items-center justify-between gap-3 p-3 rounded-md bg-gray-50 border border-gray-200">
-                          <span>{gender}</span>
-                          <Button variant="ghost" size="sm" onClick={startEditProfile}>
+                        <div className="flex items-center justify-between gap-3 p-4 rounded-xl bg-gray-50 border border-gray-200">
+                          <span className="text-gray-900">{gender}</span>
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            onClick={startEditProfile}
+                            className="text-purple-600 hover:text-purple-700 hover:bg-purple-50"
+                          >
                             수정
                           </Button>
                         </div>
                       ) : (
                         <select
-                          className="w-full p-3 border border-gray-200 rounded-md bg-white text-gray-900"
+                          className="w-full p-4 border border-purple-200 rounded-xl bg-white text-gray-900 focus:border-purple-400 focus:ring-2 focus:ring-purple-100 transition-all"
                           value={editGender}
                           onChange={(e) => setEditGender(e.target.value)}
                           disabled={isSaving}
@@ -532,15 +589,20 @@ export function MyPage() {
                       </label>
 
                       {!isEditingProfile ? (
-                        <div className="flex items-center justify-between gap-3 p-3 rounded-md bg-gray-50 border border-gray-200">
-                          <span>{mbti}</span>
-                          <Button variant="ghost" size="sm" onClick={startEditProfile}>
+                        <div className="flex items-center justify-between gap-3 p-4 rounded-xl bg-gray-50 border border-gray-200">
+                          <span className="text-gray-900">{mbti}</span>
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            onClick={startEditProfile}
+                            className="text-purple-600 hover:text-purple-700 hover:bg-purple-50"
+                          >
                             수정
                           </Button>
                         </div>
                       ) : (
                         <select
-                          className="w-full p-3 border border-gray-200 rounded-md bg-white text-gray-900"
+                          className="w-full p-4 border border-purple-200 rounded-xl bg-white text-gray-900 focus:border-purple-400 focus:ring-2 focus:ring-purple-100 transition-all"
                           value={editMbti}
                           onChange={(e) => setEditMbti(e.target.value)}
                           disabled={isSaving}
@@ -557,17 +619,29 @@ export function MyPage() {
 
                     {/* 저장/취소 */}
                     {!isEditingProfile ? (
-                      <div className="pt-2">
-                        <Button variant="outline" onClick={startEditProfile}>
+                      <div className="pt-4">
+                        <Button 
+                          onClick={startEditProfile}
+                          className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white shadow-lg"
+                        >
                           성별/MBTI 수정하기
                         </Button>
                       </div>
                     ) : (
-                      <div className="pt-2 flex gap-3">
-                        <Button onClick={saveProfile} disabled={isSaving}>
+                      <div className="pt-4 flex gap-3">
+                        <Button 
+                          onClick={saveProfile} 
+                          disabled={isSaving}
+                          className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white shadow-lg"
+                        >
                           {isSaving ? "저장 중..." : "저장"}
                         </Button>
-                        <Button variant="outline" onClick={cancelEditProfile} disabled={isSaving}>
+                        <Button 
+                          variant="outline" 
+                          onClick={cancelEditProfile} 
+                          disabled={isSaving}
+                          className="border-gray-300 text-gray-700 hover:bg-gray-50"
+                        >
                           취소
                         </Button>
                       </div>
@@ -579,6 +653,19 @@ export function MyPage() {
           </Tabs>
         </div>
       </div>
+
+      <style jsx global>{`
+        @keyframes fade-in {
+          from {
+            opacity: 0;
+            transform: translateY(10px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+      `}</style>
     </div>
   );
 }

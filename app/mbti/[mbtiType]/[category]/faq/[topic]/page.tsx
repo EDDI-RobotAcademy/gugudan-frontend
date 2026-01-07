@@ -70,17 +70,12 @@ export default async function MbtiFaqTopicPage(
   const currentMBTI =
     mbtiDescriptions[mbtiUpper] || { name: "MBTI 유형", traits: [], oneLiner: "" };
 
-  // ✅ 데이터베이스에서 직접 가져오기
   const faqs = getFaqsByMbtiCategoryTopic(mbtiUpper, category, topicKey);
-
-  // ✅ FaqItem 형식으로 변환
   const finalFaqs = faqs.map(f => ({ q: f.q, a: f.a }));
-  
-  // ✅ JSON-LD 생성
   const faqJsonLd = buildFaqJsonLd(finalFaqs);
 
   return (
-    <div className="min-h-screen bg-white dark:bg-neutral-950">
+    <div className="min-h-screen bg-white dark:bg-black">
       {finalFaqs.length > 0 && (
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: faqJsonLd }} />
       )}
@@ -91,46 +86,49 @@ export default async function MbtiFaqTopicPage(
           <div className="mb-8 flex flex-wrap gap-3 items-center">
             <Link
               href={`${basePath}/faq`}
-              className="text-gray-600 hover:text-purple-600 dark:text-gray-300 dark:hover:text-purple-300 transition-colors"
+              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-gray-600 hover:text-purple-600 hover:bg-purple-50 dark:text-gray-400 dark:hover:text-purple-400 dark:hover:bg-purple-900/20 transition-all"
             >
-              ← 주제 선택으로
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              </svg>
+              주제 선택으로
             </Link>
 
-            <span className="text-gray-300 dark:text-white/20">|</span>
+            <span className="text-gray-300 dark:text-gray-700">/</span>
 
             <Link
               href={basePath}
-              className="text-gray-600 hover:text-purple-600 dark:text-gray-300 dark:hover:text-purple-300 transition-colors"
+              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-gray-600 hover:text-purple-600 hover:bg-purple-50 dark:text-gray-400 dark:hover:text-purple-400 dark:hover:bg-purple-900/20 transition-all"
             >
               {mbtiUpper} × {currentCategory.title} 가이드로
             </Link>
           </div>
 
-          {/* Header */}
+          {/* Header - 밝은 배경 → 검은 텍스트 */}
           <div className={`bg-gradient-to-br ${currentCategory.bg} rounded-3xl p-8 md:p-10 mb-8`}>
-            <h1 className="text-2xl md:text-4xl font-extrabold text-gray-900 dark:text-white">
+            <h1 className="text-2xl md:text-4xl font-extrabold text-gray-900">
               {mbtiUpper} × {currentCategory.title} FAQ
             </h1>
 
-            <p className="mt-2 text-gray-700 dark:text-gray-200">
+            <p className="mt-2 text-gray-800">
               주제: <span className="font-semibold">{topic.title}</span>
             </p>
 
-            <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
+            <p className="mt-2 text-sm text-gray-700">
               {currentMBTI.name}
               {currentMBTI.oneLiner ? ` · ${currentMBTI.oneLiner}` : ""}
             </p>
 
             {finalFaqs.length === 0 && (
-              <p className="mt-3 text-xs text-gray-600 dark:text-gray-300">
+              <p className="mt-3 text-xs text-gray-700">
                 * 이 주제에 해당하는 질문이 아직 충분치 않아, 전체 FAQ를 보여드려요.
               </p>
             )}
           </div>
 
           {/* FAQ list */}
-          <div className="bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-2xl p-6 md:p-8">
-            <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100">
+          <div className="bg-gray-50 border border-gray-200 rounded-2xl p-6 md:p-8 dark:bg-gray-900 dark:border-gray-800">
+            <h2 className="text-lg font-bold text-gray-900 dark:text-white">
               질문 목록
             </h2>
 
@@ -138,10 +136,10 @@ export default async function MbtiFaqTopicPage(
               {finalFaqs.map((f, idx) => (
                 <details
                   key={idx}
-                  className="group bg-white dark:bg-neutral-950 border border-gray-200 dark:border-white/10 rounded-xl px-5 py-4"
+                  className="group bg-white border border-gray-200 rounded-xl px-5 py-4 dark:bg-black dark:border-gray-800"
                 >
                   <summary className="cursor-pointer list-none flex items-start justify-between gap-4">
-                    <h3 className="font-semibold text-gray-900 dark:text-gray-100 leading-relaxed">
+                    <h3 className="font-semibold text-gray-900 dark:text-white leading-relaxed">
                       {f.q}
                     </h3>
                     <span className="mt-1 text-gray-400 group-open:rotate-180 transition-transform">
@@ -149,14 +147,14 @@ export default async function MbtiFaqTopicPage(
                     </span>
                   </summary>
 
-                  <div className="mt-3 text-gray-600 dark:text-gray-300 leading-relaxed">
+                  <div className="mt-3 text-gray-600 dark:text-gray-400 leading-relaxed">
                     {f.a}
                   </div>
                 </details>
               ))}
             </div>
 
-            <p className="mt-6 text-xs text-gray-500 dark:text-gray-400">
+            <p className="mt-6 text-xs text-gray-500">
               ※ MBTI 성향 기반 참고용 요약이며, 개인차가 있을 수 있어요.
             </p>
           </div>

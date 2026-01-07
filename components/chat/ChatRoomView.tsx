@@ -1,10 +1,11 @@
 "use client";
 
-import {useEffect, useRef, useState} from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import {ChatMessage} from "./ChatMessage";
 import {Feedback} from "./Feedback";
-// import {SurveyModal} from "../modal/Surveymodal";
-// import SurveyTestButton from "@/components/home/SurveyTestButton";
+import {SurveyModal} from "../modal/Surveymodal";
+import SurveyTestButton from "@/components/home/SurveyTestButton";
+import { SurveyContent, fallbackSurveyContent } from "../modal/_content/survey";
 
 import {
     ArrowsRightLeftIcon,
@@ -27,10 +28,6 @@ type Message = {
   user_feedback?: "LIKE" | "DISLIKE" | null;
   file_urls?: string[];
 };
-// 설문조사 관련 상수
-// const SURVEY_STORAGE_KEY = "chat_message_count";
-// const SURVEY_COMPLETED_KEY = "survey_completed";
-// const SURVEY_TRIGGER_COUNT = 2; // 2회 채팅 후 설문조사
 
 type RoomStatus = "ACTIVE" | "LOCKED" | "ENDED" | "UNKNOWN";
 
@@ -61,8 +58,8 @@ export function ChatRoomView({ roomId, onRoomCreated }: Props) {
   const [targetMessageId, setTargetMessageId] = useState<number | null>(null);
   const [feedbackScore, setFeedbackScore] = useState<"LIKE" | "DISLIKE" | null>(null);
   // 설문조사 상태
-  // const [isSurveyOpen, setIsSurveyOpen] = useState(false);
-  // const [messageCount, setMessageCount] = useState(0);
+  const [isSurveyOpen, setIsSurveyOpen] = useState(false);
+  const [surveyContent, setSurveyContent] = useState<SurveyContent | null>(null);
 
   const MAX_FILES = 4;
   const [selectedFiles, setSelectedFiles] = useState<FileItem[]>([]);
@@ -87,49 +84,63 @@ export function ChatRoomView({ roomId, onRoomCreated }: Props) {
     inputRef.current?.focus();
   }, [roomId]);
 
-  // 초기 카운트 로드
-  // useEffect(() => {
-  //   if (typeof window !== "undefined") {
-  //     const savedCount = localStorage.getItem(SURVEY_STORAGE_KEY);
-  //     setMessageCount(savedCount ? parseInt(savedCount, 10) : 0);
-  //   }
-  // }, []);
+  /** 설문 데이터 가져오기 */
+  const fetchSurvey = useCallback(async () => {
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/survey/questions`, {
+        credentials: "include",
+      });
 
-  // 설문조사 체크 함수
-  // const checkSurveyTrigger = (count: number) => {
-  //   if (typeof window === "undefined") return;
+      if (!response.ok) {
+        console.log("Survey API failed:", response.status);
+        return;
+      }
 
-  //   // const completed = localStorage.getItem(SURVEY_COMPLETED_KEY) === "true";
-  //   // if (completed) return;
+      const data = await response.json();
 
-  //   if (count >= SURVEY_TRIGGER_COUNT) {
-  //     setIsSurveyOpen(true);
-  //   }
-  // };
+      // 서버가 show: false 반환
+      if (!data?.show) {
+        console.log("Survey not shown:", data.reason);
+        return;
+      }
 
+      // 설문 표시
+      const hasValidQuestions = Array.isArray(data?.questions) && data.questions.length > 0;
+      if (!hasValidQuestions) {
+        console.warn("Invalid questions, using fallback");
+        setSurveyContent(fallbackSurveyContent);
+      } else {
+        setSurveyContent({
+          title: data.title ?? fallbackSurveyContent.title,
+          subtitle: data.subtitle ?? fallbackSurveyContent.subtitle,
+          footer: data.footer ?? fallbackSurveyContent.footer,
+          questions: data.questions,
+        });
+      }
 
-  // 메시지 카운트 증가 함수
-  // const incrementMessageCount = () => {
-  //   if (typeof window === "undefined") return;
+      setIsSurveyOpen(true);
+    } catch (error) {
+      console.error("Failed to fetch survey:", error);
+    }
+  }, []);
 
-  //   // ✅ localStorage를 source of truth로
-  //   const current = parseInt(localStorage.getItem(SURVEY_STORAGE_KEY) || "0", 10);
-  //   const next = current + 1;
+  /** 설문 완료 처리 */
+  const handleSurveyComplete = async (answers: Record<string, string>) => {
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/survey/responses`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ answers }),
+      });
 
-  //   localStorage.setItem(SURVEY_STORAGE_KEY, String(next));
-  //   setMessageCount(next); // UI 표시용이면 유지, 아니면 제거 가능
-
-  //   // ✅ setTimeout 필요 없음 (즉시 판단)
-  //   checkSurveyTrigger(next);
-  // };
-
-  // // 설문조사 완료 핸들러
-  // const handleSurveyComplete = () => {
-  //   if (typeof window !== "undefined") {
-  //     localStorage.setItem(SURVEY_COMPLETED_KEY, "true");
-  //   }
-  //   setIsSurveyOpen(false);
-  // };
+      if (response.ok) {
+        console.log("Survey submitted successfully");
+      }
+    } catch (e) {
+      console.error("Failed to submit survey:", e);
+    }
+  };
 
   // 파일 선택 핸들러
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -176,51 +187,47 @@ export function ChatRoomView({ roomId, onRoomCreated }: Props) {
       return;
     }
 
-  // 상담 상태에 대한 추가
-  const fetchRoomStatus = async () => {
-    const url = `${process.env.NEXT_PUBLIC_API_BASE_URL}/conversation/rooms/${roomId}/status`;
-    console.log("fetchRoomStatus url:", url);
+    // 상담 상태에 대한 추가
+    const fetchRoomStatus = async () => {
+      const url = `${process.env.NEXT_PUBLIC_API_BASE_URL}/conversation/rooms/${roomId}/status`;
 
-    try {
-      const res = await fetch(url, { method: "GET", credentials: "include" });
-      console.log("fetchRoomStatus status:", res.status);
+      try {
+        const res = await fetch(url, { method: "GET", credentials: "include" });
+        const text = await res.text();
 
-      const text = await res.text();
-      console.log("fetchRoomStatus body:", text);
+        if (!res.ok) {
+          setRoomStatus("UNKNOWN");
+          return;
+        }
 
-      if (!res.ok) {
+        const data = text ? JSON.parse(text) : {};
+        const s = String(data?.status ?? "").toUpperCase();
+
+        if (s === "ACTIVE") setRoomStatus("ACTIVE");
+        else if (s === "LOCKED") setRoomStatus("LOCKED");
+        else if (s === "ENDED") setRoomStatus("ENDED");
+        else setRoomStatus("UNKNOWN");
+      } catch (e) {
+        console.error("fetchRoomStatus error:", e);
         setRoomStatus("UNKNOWN");
-        return;
       }
+    };
 
-      const data = text ? JSON.parse(text) : {};
-      const s = String(data?.status ?? "").toUpperCase();
+    const fetchMessages = async () => {
+      const url = `${process.env.NEXT_PUBLIC_API_BASE_URL}/conversation/rooms/${roomId}/messages`;
 
-      if (s === "ACTIVE") setRoomStatus("ACTIVE");
-      else if (s === "LOCKED") setRoomStatus("LOCKED");
-      else if (s === "ENDED") setRoomStatus("ENDED");
-      else setRoomStatus("UNKNOWN");
-    } catch (e) {
-      console.error("fetchRoomStatus error:", e);
-      setRoomStatus("UNKNOWN");
-    }
-  };
+      try {
+        const res = await fetch(url, { credentials: "include" });
+        const text = await res.text();
 
-  const fetchMessages = async () => {
-    const url = `${process.env.NEXT_PUBLIC_API_BASE_URL}/conversation/rooms/${roomId}/messages`;
-
-    try {
-      const res = await fetch(url, { credentials: "include" });
-      const text = await res.text();
-
-      if (res.ok) {
-        const data = JSON.parse(text);
-        setMessages(Array.isArray(data) ? data : []);
+        if (res.ok) {
+          const data = JSON.parse(text);
+          setMessages(Array.isArray(data) ? data : []);
+        }
+      } catch (err) {
+        console.error("Failed to fetch messages:", err);
       }
-    } catch (err) {
-      console.error("Failed to fetch messages:", err);
-    }
-  };
+    };
     void fetchRoomStatus();
     void fetchMessages();
   }, [roomId]);
@@ -280,13 +287,10 @@ const handleSendMessage = async (textToSend?: string) => {
 
     setMessages((prev) => [
       ...prev,
-      {
-        role: "USER",
-        content: finalContent,
-        file_urls: memoizedUrls, 
-      },
+      { role: "USER", content: finalContent, file_urls: memoizedUrls },
       { role: "ASSISTANT", content: "" },
     ]);
+
 
     const payload: ChatRequestPayload = {
       room_id: roomId,
@@ -309,6 +313,7 @@ const handleSendMessage = async (textToSend?: string) => {
     }
 
     if (!res.body) return;
+
     const reader = res.body.getReader();
     const decoder = new TextDecoder();
     let assistantText = "";
@@ -316,12 +321,14 @@ const handleSendMessage = async (textToSend?: string) => {
     while (true) {
       const { value, done } = await reader.read();
       if (done) break;
+
       assistantText += decoder.decode(value);
       setMessages((prev) => {
         const copy = [...prev];
         copy[copy.length - 1] = { role: "ASSISTANT", content: assistantText };
         return copy;
       });
+
       bottomRef.current?.scrollIntoView({ behavior: "auto" });
     }
 
@@ -350,13 +357,15 @@ const handleSendMessage = async (textToSend?: string) => {
     }
 
     if (!roomId) {
-      const roomsRes = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/conversation/rooms`, { credentials: "include" });
+      const roomsRes = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/conversation/rooms`, {
+        credentials: "include",
+      });
       const rooms = await roomsRes.json();
       const newest = rooms[0];
       if (newest?.room_id) onRoomCreated(newest.room_id);
     }
-    // 메시지 전송 성공 후 카운트 증가
-    // incrementMessageCount();
+    // 메시지 전송 후 설문 체크
+    await fetchSurvey();
   } catch (error: unknown) {
     if (!(error instanceof Error && error.name === "AbortError")) console.error(error);
   } finally {
@@ -396,29 +405,29 @@ const handleSendMessage = async (textToSend?: string) => {
       title: "대화의 온도",
       desc: "상대방과 자꾸 말이 어긋날 때",
       icon: <ChatBubbleLeftEllipsisIcon className="w-5 h-5" />,
-      text: "요즘 파트너와 대화를 하면 자꾸 오해가 생기고 어긋나는 것 같아 답답해요. 어떻게 대화를 풀어가면 좋을까요?"
+      text: "요즘 파트너와 대화를 하면 자꾸 오해가 생기고 어긋나는 것 같아 답답해요. 어떻게 대화를 풀어가면 좋을까요?",
     },
     {
       id: "distance",
       title: "관계의 거리",
       desc: "가까움과 서운함 사이 고민",
       icon: <ArrowsRightLeftIcon className="w-5 h-5" />,
-      text: "관계에서 적절한 거리를 유지하는 게 참 어려워요. 너무 가깝거나 멀게 느껴질 때 제 마음을 어떻게 정리해야 할까요?"
+      text: "관계에서 적절한 거리를 유지하는 게 참 어려워요. 너무 가깝거나 멀게 느껴질 때 제 마음을 어떻게 정리해야 할까요?",
     },
     {
       id: "breakup",
       title: "이별과 정리",
       desc: "정리 이후 몰려오는 생각들",
       icon: <HeartIcon className="w-5 h-5" />,
-      text: "관계가 끝난 뒤에 남은 복잡한 감정들을 정리하고 싶어요. 제 마음을 가만히 들여다볼 수 있게 도와주세요."
+      text: "관계가 끝난 뒤에 남은 복잡한 감정들을 정리하고 싶어요. 제 마음을 가만히 들여다볼 수 있게 도와주세요.",
     },
     {
       id: "myself",
       title: "나의 마음",
       desc: "관계 속 잃어버린 나 찾기",
       icon: <FaceSmileIcon className="w-5 h-5" />,
-      text: "관계에 집중하다 보니 제 자신의 마음을 돌보지 못한 것 같아요. 지금 제 감정을 찬찬히 정리해보고 싶어요."
-    }
+      text: "관계에 집중하다 보니 제 자신의 마음을 돌보지 못한 것 같아요. 지금 제 감정을 찬찬히 정리해보고 싶어요.",
+    },
   ];
 
   // 상담 종료에 대한 멘트
@@ -464,9 +473,9 @@ const handleSendMessage = async (textToSend?: string) => {
             onClick={endConsultation}
             disabled={!roomId || loading || roomStatus === "ENDED"}
             className="px-3 py-1.5 text-sm rounded-lg border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 disabled:bg-gray-100 disabled:text-gray-400"
-            title="상담 종료"
+            title="대화 종료"
           >
-            상담 종료
+            대화 종료
           </button>
         </div>
       </header>
@@ -491,7 +500,7 @@ const handleSendMessage = async (textToSend?: string) => {
                 {categories.map((item) => (
                   <button 
                     key={item.id}
-                    onClick={() => handleSendMessage(item.text)} // 즉시 전송
+                    onClick={() => void handleSendMessage(item.text)}
                     className="group p-5 text-left border border-gray-100 bg-white rounded-2xl hover:bg-pink-50 hover:border-pink-200 transition-all shadow-sm hover:shadow-md text-gray-900"
                   >
                     <div className="flex items-center gap-3 mb-2">
@@ -602,12 +611,17 @@ const handleSendMessage = async (textToSend?: string) => {
         </div>
       </div>
       
-      {/* ? 설문조사 팝업 */}
-      {/* <SurveyModal 
-        isOpen={isSurveyOpen}
-        onClose={() => setIsSurveyOpen(false)}
-        onComplete={handleSurveyComplete}
-      /> */}
+      {/* Survey Modal */}
+      {isSurveyOpen && surveyContent && (
+        <SurveyModal
+          isOpen={isSurveyOpen}
+          onClose={() => {
+            setSurveyContent(null);
+          }}
+          onComplete={handleSurveyComplete}
+          surveyContent={surveyContent}
+        />
+      )}
 
       <Feedback 
         isOpen={isModalOpen}
@@ -645,7 +659,8 @@ const handleSendMessage = async (textToSend?: string) => {
             }
           }}
         />
-        {/* <SurveyTestButton /> */}
+        {/* 로컬 테스트 용 */}
+        {/* <SurveyTestButton/> */}
     </div>
     
   );
