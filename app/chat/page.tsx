@@ -43,19 +43,21 @@ function ChatPageContent() {
   // --- 시뮬레이션 모드 렌더링 ---
   if (isSimulation) {
     return (
-      <div className="flex h-screen bg-white dark:bg-neutral-950 overflow-hidden">
-        <SimulationSidebar 
-          key={refreshKey}
-          selectedChatId={selectedSimId} 
-          onSelectChat={(id: string | null) => setSelectedSimId(id)} 
-        />
-        <main className="flex-1 relative flex flex-col h-full overflow-hidden border-l border-gray-100 dark:border-white/5">
-          <SimulationRoom 
-            initialChatId={selectedSimId} 
-            onNewChatStarted={() => setRefreshKey((prev: number) => prev + 1)}
+      <Suspense fallback={<div className="flex h-screen items-center justify-center">Loading Simulation...</div>}>
+        <div className="flex h-screen bg-white dark:bg-neutral-950 overflow-hidden">
+          <SimulationSidebar 
+            key={refreshKey}
+            selectedChatId={selectedSimId} 
+            onSelectChat={(id: string | null) => setSelectedSimId(id)} 
           />
-        </main>
-      </div>
+          <main className="flex-1 relative flex flex-col h-full overflow-hidden border-l border-gray-100 dark:border-white/5">
+            <SimulationRoom 
+              initialChatId={selectedSimId} 
+              onNewChatStarted={() => setRefreshKey((prev: number) => prev + 1)}
+            />
+          </main>
+        </div>
+      </Suspense>
     );
   }
 
@@ -70,10 +72,10 @@ function ChatPageContent() {
 
 export default function ChatPage() {
   return (
-    <ProtectedRoute>
-      <Suspense fallback={null}>
+    <Suspense fallback={<div className="h-screen bg-white dark:bg-neutral-950" />}>
+      <ProtectedRoute>
         <ChatPageContent />
-      </Suspense>
-    </ProtectedRoute>
+      </ProtectedRoute>
+    </Suspense>
   );
 }
