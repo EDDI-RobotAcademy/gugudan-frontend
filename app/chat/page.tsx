@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState, Suspense } from "react";
+import { useCallback, useState, Suspense, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { ChatRoomList } from "@/components/chat/ChatRoomList";
@@ -17,6 +17,8 @@ const STORAGE_KEY = "selectedRoomId";
 function ChatPageContent() {
   const searchParams = useSearchParams();
   const isSimulation = searchParams.get("mode") === "simulation";
+  const urlSimId = searchParams.get("id"); // 👈 URL에서 ID 읽기
+
 
   // 1) 일반 채팅용 상태
   const [roomId, setRoomId] = useState<string | null>(() => {
@@ -25,8 +27,15 @@ function ChatPageContent() {
   });
 
   // --- 추가된 시뮬레이션 전용 상태 (여기서 정의해야 에러가 안 납니다) ---
-  const [selectedSimId, setSelectedSimId] = useState<string | null>(null);
+  const [selectedSimId, setSelectedSimId] = useState<string | null>(urlSimId);
   const [refreshKey, setRefreshKey] = useState<number>(0);
+
+  // -- URL이 변경되면 selectedSimId 업데이트
+  useEffect(() => {
+    if (isSimulation && urlSimId) {
+      setSelectedSimId(urlSimId);
+    }
+  }, [isSimulation, urlSimId]);
 
   // 2) 일반 채팅 로직
   const handleSelectRoom = useCallback((nextRoomId: string | null) => {

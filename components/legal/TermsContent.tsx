@@ -12,7 +12,7 @@ export default function TermsContent() {
       <section>
         <h4 className="font-semibold text-gray-900">1. 서비스 제공</h4>
         <p className="mt-2">
-          서비스는 AI 기반 상담 기능 및 관련 부가 기능을 제공합니다. 서비스는 운영
+          서비스는 AI 기반 대화 기능 및 관련 부가 기능을 제공합니다. 서비스는 운영
           정책에 따라 일부 기능을 변경할 수 있습니다.
         </p>
       </section>
@@ -28,7 +28,7 @@ export default function TermsContent() {
       <section>
         <h4 className="font-semibold text-gray-900">3. 면책</h4>
         <p className="mt-2">
-          서비스가 제공하는 상담 내용은 참고용이며, 전문가 상담을 대체하지 않습니다.
+          서비스가 제공하는 대화 내용은 참고용이며, 전문가 상담을 대체하지 않습니다.
         </p>
       </section>
 
