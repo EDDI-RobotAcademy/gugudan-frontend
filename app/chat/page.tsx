@@ -12,7 +12,7 @@ import { ChatRoomView } from "@/components/chat/ChatRoomView";
 import SimulationSidebar from "@/components/simulation//SimulationSidebar";
 import SimulationRoom from "@/components/simulation/SimulationRoom";
 
-const STORAGE_KEY = "selectedRoomId";
+import {STORAGE_KEYS} from "@/lib/constants";
 
 function ChatPageContent() {
   const searchParams = useSearchParams();
@@ -23,7 +23,7 @@ function ChatPageContent() {
   // 1) 일반 채팅용 상태
   const [roomId, setRoomId] = useState<string | null>(() => {
     if (typeof window === "undefined") return null;
-    return localStorage.getItem(STORAGE_KEY);
+    return localStorage.getItem(STORAGE_KEYS.SELECTED_ROOM_ID);
   });
 
   // --- 추가된 시뮬레이션 전용 상태 (여기서 정의해야 에러가 안 납니다) ---
@@ -40,13 +40,13 @@ function ChatPageContent() {
   // 2) 일반 채팅 로직
   const handleSelectRoom = useCallback((nextRoomId: string | null) => {
     setRoomId(nextRoomId);
-    if (nextRoomId) localStorage.setItem(STORAGE_KEY, nextRoomId);
-    else localStorage.removeItem(STORAGE_KEY);
+    if (nextRoomId) localStorage.setItem(STORAGE_KEYS.SELECTED_ROOM_ID, nextRoomId);
+    else localStorage.removeItem(STORAGE_KEYS.SELECTED_ROOM_ID);
   }, []);
 
   const handleRoomCreated = useCallback((newRoomId: string) => {
     setRoomId(newRoomId);
-    localStorage.setItem(STORAGE_KEY, newRoomId);
+    localStorage.setItem(STORAGE_KEYS.SELECTED_ROOM_ID, newRoomId);
   }, []);
 
   // --- 시뮬레이션 모드 렌더링 ---
