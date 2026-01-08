@@ -21,7 +21,7 @@ export default function PrivacyContent() {
         <h4 className="font-semibold text-gray-900">2. 이용 목적</h4>
         <ul className="mt-2 list-disc pl-5 space-y-1">
           <li>사용자 식별 및 계정 관리</li>
-          <li>맞춤형 상담 품질 개선</li>
+          <li>맞춤형 대화 품질 개선</li>
           <li>서비스 운영 및 보안</li>
         </ul>
       </section>

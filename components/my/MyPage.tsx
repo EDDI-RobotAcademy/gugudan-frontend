@@ -10,7 +10,7 @@ import {Button} from "@/components/ui/Button";
 import {Avatar, AvatarFallback} from "@/components/ui/Avatar";
 import {Badge} from "@/components/ui/Badge";
 import {Tabs, TabsContent, TabsList, TabsTrigger} from "@/components/ui/Tabs";
-import {MessageCircle, User as UserIcon, Sparkles, Heart, Calendar} from "lucide-react";
+import {MessageCircle, User as UserIcon, Sparkles, Heart, Calendar, Search} from "lucide-react";
 
 const STORAGE_KEY = "selectedRoomId";
 
@@ -20,6 +20,8 @@ type ConsultationSession = {
   topic: string;
   status: "ACTIVE" | "LOCKED" | "ENDED" | "UNKNOWN";
   duration?: string;
+  mode?: "normal" | "simulation"; // 추가
+  mbti?: string; // 추가
 };
 
 const GENDER_OPTIONS = ["MALE", "FEMALE", "OTHER"] as const;
@@ -58,6 +60,8 @@ function normalizeRoom(raw: any): ConsultationSession {
   const id = String(raw?.room_id ?? raw?.id ?? raw?.roomId ?? "");
   const createdAt = raw?.created_at ?? raw?.createdAt ?? raw?.created;
   const title = raw?.title ?? raw?.topic ?? raw?.category ?? "상담";
+  const mode = raw?.mode ?? "normal"; // 일반 상담 또는 simulation
+  const mbti = raw?.mbti ?? null; // MBTI 정보
 
   const s = String(raw?.status ?? "").toUpperCase();
 
@@ -66,7 +70,7 @@ function normalizeRoom(raw: any): ConsultationSession {
   else if (s === "LOCKED") status = "LOCKED";
   else if (s === "ENDED") status = "ENDED";
 
-  return { id, date: toYYYYMMDD(createdAt), topic: title, status };
+  return { id, date: toYYYYMMDD(createdAt), topic: title, status, mode, mbti };
 }
 
 function renderStatusLabel(s: ConsultationSession["status"]) {
@@ -85,6 +89,9 @@ export function MyPage() {
 
   const [activeTab, setActiveTab] = useState("go");
   const [deletingRoomId, setDeletingRoomId] = useState<string | null>(null);
+
+  const [filter, setFilter] = useState<"all" | "normal" | "simulation">("all");
+  const [searchQuery, setSearchQuery] = useState("");
 
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [editGender, setEditGender] = useState<string>("");
@@ -134,26 +141,50 @@ export function MyPage() {
     setRoomsError(null);
 
     try {
-      const res = await fetch(`${API_BASE}/conversation/rooms`, {
-        method: "GET",
-        credentials: "include",
-      });
+      // 일반 상담과 시뮬레이션 대화 병렬 호출
+      const [normalRes, simulationRes] = await Promise.all([
+        fetch(`${API_BASE}/conversation/rooms`, {
+          method: "GET",
+          credentials: "include",
+        }),
+        fetch(`${API_BASE}/simulation/list`, {
+          method: "GET",
+          credentials: "include",
+        })
+      ]);
 
-      if (!res.ok) {
-        const text = await res.text();
-        throw new Error(text || `요청 실패: ${res.status}`);
+      // 일반 상담 데이터
+      const normalRooms: ConsultationSession[] = [];
+      if (normalRes.ok) {
+        const normalData = await normalRes.json();
+        const normalList = Array.isArray(normalData)
+          ? normalData
+          : normalData?.items ?? normalData?.rooms ?? [];
+        normalRooms.push(...normalList.map((raw: any) => normalizeRoom(raw)));
       }
 
-      const data = await res.json();
-      const list = Array.isArray(data)
-        ? data
-        : data?.items ?? data?.rooms ?? [];
+      // 시뮬레이션 데이터
+      const simulationRooms: ConsultationSession[] = [];
+      if (simulationRes.ok) {
+        const simulationData = await simulationRes.json();
+        if (Array.isArray(simulationData)) {
+          simulationRooms.push(...simulationData.map((raw: any) => ({
+            id: raw.id,
+            date: toYYYYMMDD(raw.created_at || raw.createdAt),
+            topic: `${raw.mbti}(${raw.gender}) - ${raw.topic}`,
+            status: "ACTIVE" as const,
+            mode: "simulation" as const,
+            mbti: raw.mbti,
+          })));
+        }
+      }
 
-      const mapped = (list ?? [])
-        .map(normalizeRoom)
-        .filter((x: ConsultationSession) => x.id);
+      // 두 배열 합치고 날짜순 정렬
+      const allRooms = [...normalRooms, ...simulationRooms]
+        .filter((x) => x.id)
+        .sort((a, b) => b.date.localeCompare(a.date)); // 최신순
 
-      setRooms(mapped);
+      setRooms(allRooms);
     } catch (e: any) {
       setRoomsError(e?.message ?? "상담 이력을 불러오지 못했습니다.");
     } finally {
@@ -167,7 +198,7 @@ export function MyPage() {
   }, [user, fetchRooms]);
 
   const deleteRoom = useCallback(
-    async (roomId: string) => {
+    async (roomId: string, mode?: string) => {
       if (!roomId) return;
 
       const ok = confirm("이 상담 기록을 삭제하시겠어요?\n삭제 후에는 다시 복구할 수 없어요.");
@@ -175,8 +206,13 @@ export function MyPage() {
 
       setDeletingRoomId(roomId);
 
+      const endpoint = mode === "simulation"
+      ? `${API_BASE}/simulation/${roomId}`
+      : `${API_BASE}/conversation/rooms/${roomId}`;
+    
       try {
-        const res = await fetch(`${API_BASE}/conversation/rooms/${roomId}`, {
+    
+        const res = await fetch(endpoint, {
           method: "DELETE",
           credentials: "include",
         });
@@ -204,6 +240,27 @@ export function MyPage() {
   );
 
   const totalCount = rooms.length;
+  const filteredRooms = useMemo(() => {
+    let result = rooms;
+
+    // 필터 적용
+    if (filter === "normal") {
+      result = result.filter(r => r.mode === "normal");
+    } else if (filter === "simulation") {
+      result = result.filter(r => r.mode === "simulation");
+    }
+
+    // 검색 적용
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      result = result.filter(r => 
+        r.topic.toLowerCase().includes(query) ||
+        r.mbti?.toLowerCase().includes(query)
+      );
+    }
+
+    return result;
+  }, [rooms, filter, searchQuery]);
 
   const nickname = user?.nickname ?? "사용자";
   const email = user?.email ?? "-";
@@ -277,7 +334,7 @@ export function MyPage() {
 
   return (
     // ✅ 메인 페이지와 동일한 밝은 배경
-    <div className="min-h-[calc(100vh-64px)] bg-gradient-to-b from-purple-50/30 via-pink-50/20 to-white">
+<div className="min-h-[calc(100vh-64px)] bg-gradient-to-b from-purple-50 to-pink-50">
       <div className="container mx-auto px-4 py-8">
         <div className="max-w-6xl mx-auto">
           {/* 감성적인 헤더 메시지 */}
@@ -293,15 +350,13 @@ export function MyPage() {
           </div>
 
           {/* Profile Header */}
-          <Card className="mb-8 border-0 bg-white/90 shadow-xl backdrop-blur-sm overflow-hidden">
-            <div className="absolute inset-0 bg-gradient-to-br from-purple-500/5 via-pink-500/5 to-transparent pointer-events-none" />
-            
-            <CardContent className="pt-8 pb-6 relative">
+          <Card className="mb-8 border-0 bg-white shadow-xl overflow-hidden">            
+            <CardContent className="pt-8 pb-6">
               <div className="flex flex-col md:flex-row items-center md:items-start gap-6">
                 <div className="relative group">
-                  <div className="absolute inset-0 bg-gradient-to-br from-purple-600 to-pink-600 rounded-full blur-lg opacity-30 group-hover:opacity-50 transition-opacity" />
                   <Avatar className="relative w-24 h-24 border-4 border-white shadow-xl">
-                    <AvatarFallback className="bg-gradient-to-br from-purple-100 to-pink-100 text-purple-700 text-2xl font-bold">
+                    <AvatarFallback className="bg-gray-100 text-purple-700 text-2xl font-bold">
+
                       {getInitials(nickname)}
                     </AvatarFallback>
                   </Avatar>
@@ -324,7 +379,7 @@ export function MyPage() {
                     <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-pink-50">
                       <Heart className="w-4 h-4 text-pink-600" />
                       <div>
-                        <p className="text-xs text-gray-500">총 상담</p>
+                        <p className="text-xs text-gray-500">총 대화</p>
                         <p className="text-sm font-semibold text-gray-900">{totalCount}회</p>
                       </div>
                     </div>
@@ -344,7 +399,7 @@ export function MyPage() {
                   data-[state=active]:text-white data-[state=active]:shadow-lg"
               >
                 <MessageCircle className="w-4 h-4" />
-                상담 하러가기
+                이야기 하러가기
               </TabsTrigger>
 
               <TabsTrigger
@@ -354,7 +409,7 @@ export function MyPage() {
                   data-[state=active]:text-white data-[state=active]:shadow-lg"
               >
                 <Sparkles className="w-4 h-4" />
-                상담 이력
+                대화 이력
               </TabsTrigger>
 
               <TabsTrigger
@@ -368,39 +423,59 @@ export function MyPage() {
               </TabsTrigger>
             </TabsList>
 
-            {/* 상담 하러가기 */}
             <TabsContent value="go" className="mt-6">
-              <Card className="border-0 bg-white/90 shadow-lg backdrop-blur-sm">
+              <Card className="border-0 bg-white shadow-lg">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-gray-900">
                     <MessageCircle className="w-5 h-5 text-purple-600" />
-                    새로운 대화를 시작해보세요
+                    원하시는 대화 방식을 선택해보세요
                   </CardTitle>
                   <CardDescription className="text-gray-600">
-                    지금 마음에 맞는 주제로 AI 상담을 시작할 수 있어요.
+                    일반 대화와 MBTI 기반 가상 대화 중 선택할 수 있어요.
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="flex flex-col items-center justify-center py-16 text-center">
-                    <div className="mb-6 w-20 h-20 rounded-full bg-gradient-to-br from-purple-100 to-pink-100 flex items-center justify-center">
-                      <MessageCircle className="w-10 h-10 text-purple-600" />
+                  <div className="grid md:grid-cols-2 gap-6">
+                    {/* 일반 상담 */}
+                    <div className="flex flex-col items-center p-8 rounded-2xl border-2 border-purple-100 hover:border-purple-300 transition-all bg-gradient-to-br from-purple-50/50 to-pink-50/50">
+                      <div className="w-16 h-16 rounded-full bg-gradient-to-br from-purple-100 to-pink-100 flex items-center justify-center mb-4">
+                        <MessageCircle className="w-8 h-8 text-purple-600" />
+                      </div>
+                      <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                        일반 대화
+                      </h3>
+                      <p className="text-sm text-gray-600 text-center mb-6">
+                        편안하게 자유롭게<br />이야기를 나눠보세요
+                      </p>
+                      <Button 
+                        className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white"
+                        onClick={() => startNewChat(router, "/chat")}
+                      >
+                        시작하기
+                      </Button>
                     </div>
-                    <h3 className="text-xl font-semibold text-gray-900 mb-3">
-                      편안하게 이야기를 시작해보세요
-                    </h3>
-                    <p className="text-gray-600 mb-8 max-w-md">
-                      love-note는 당신의 이야기를 경청하고,
-                      <br />
-                      함께 생각을 정리할 준비가 되어있어요.
-                    </p>
 
-                    <Button 
-                      className="px-8 py-6 text-base bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white shadow-lg hover:shadow-xl transition-all"
-                      onClick={() => startNewChat(router, "/chat")}
-                    >
-                      <MessageCircle className="w-5 h-5 mr-2" />
-                      상담 시작하기
-                    </Button>
+                    {/* MBTI 가상 대화 */}
+                    <div className="flex flex-col items-center p-8 rounded-2xl border-2 border-purple-100 hover:border-purple-300 transition-all bg-gradient-to-br from-purple-50/50 to-pink-50/50">
+                      <div className="w-16 h-16 rounded-full bg-gradient-to-br from-purple-100 to-pink-100 flex items-center justify-center mb-4">
+                        <Sparkles className="w-8 h-8 text-purple-600" />
+                      </div>
+                      <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                        MBTI 가상 대화
+                      </h3>
+                      <p className="text-sm text-gray-600 text-center mb-6">
+                        상대방 MBTI로<br />연습해보세요
+                      </p>
+                      <Button 
+                        className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white"
+                        onClick={() => {
+                          const userMbti = profileMbti || "INFP"; // 사용자 MBTI 또는 기본값
+                          router.push(`/chat?mbti=${userMbti}&topic=dating&mode=simulation`);
+                        }}
+                      >
+                        시작하기
+                      </Button>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
@@ -436,80 +511,176 @@ export function MyPage() {
                       </Button>
                     </div>
                   ) : rooms.length === 0 ? (
+
                     <div className="py-16 text-center">
                       <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-gradient-to-br from-purple-100 to-pink-100 flex items-center justify-center">
                         <MessageCircle className="w-10 h-10 text-gray-400" />
                       </div>
-                      <p className="text-gray-600 mb-2">아직 상담 이력이 없어요</p>
+                      <p className="text-gray-600 mb-2">아직 대화 이력이 없어요</p>
                       <p className="text-sm text-gray-500">첫 대화를 시작해보세요!</p>
                     </div>
                   ) : (
-                    <div className="space-y-4">
-                      {rooms.map((session, idx) => (
-                        <div
-                          key={session.id}
-                          className="group flex items-center justify-between p-5 border border-gray-100 rounded-2xl hover:border-purple-200 hover:shadow-md transition-all bg-white"
-                          style={{
-                            animation: `fade-in 0.3s ease-out ${idx * 0.05}s both`
-                          }}
-                        >
-                          <div className="flex items-center gap-4">
-                            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-purple-100 to-pink-100 flex items-center justify-center group-hover:scale-110 transition-transform">
-                              <MessageCircle className="w-7 h-7 text-purple-600" />
-                            </div>
-
-                            <div>
-                              <h4 className="font-semibold text-gray-900 mb-1">
-                                {session.topic}
-                              </h4>
-                              <p className="text-sm text-gray-600">
-                                {session.date}
-                                {session.duration ? ` · ${session.duration}` : ""}
-                              </p>
-                            </div>
-                          </div>
-
-                          <div className="flex items-center gap-3">
-                            <Badge 
-                              variant="secondary"
-                              className={
-                                session.status === "LOCKED"
-                                  ? "bg-amber-100 text-amber-800 border-amber-200"
-                                  : session.status === "ENDED"
-                                  ? "bg-gray-100 text-gray-700 border-gray-200"
-                                  : "bg-green-100 text-green-800 border-green-200"
-                              }
-                            >
-                              {renderStatusLabel(session.status)}
-                            </Badge>
-
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="text-purple-600 hover:text-purple-700 hover:bg-purple-50"
-                              onClick={() => {
-                                localStorage.setItem(STORAGE_KEY, session.id);
-                                router.push("/chat");
-                              }}
-                            >
-                              이어가기
-                            </Button>
-                            <Button 
-                              variant="ghost" 
-                              size="sm"
-                              className="text-gray-500 hover:text-red-600 hover:bg-red-50"
-                              onClick={(e) => { 
-                                e.stopPropagation(); 
-                                deleteRoom(session.id); 
-                              }}
-                              disabled={deletingRoomId === session.id}
-                            >
-                              {deletingRoomId === session.id ? "삭제 중..." : "삭제"}
-                            </Button>
-                          </div>
+                    // 👇 대화가 있을 때 - 여기에 필터+검색 추가!
+                    <>
+                      {/* 필터 + 검색 UI */}
+                      <div className="mb-6 space-y-3">
+                        <div className="flex gap-2">
+                          <Button
+                            variant={filter === "all" ? "default" : "outline" as any}
+                            size="sm"
+                            onClick={() => setFilter("all")}
+                            className={`rounded-full ${
+                              filter === "all" 
+                                ? "bg-gradient-to-r from-purple-600 to-pink-600 text-white" 
+                                : "hover:bg-purple-50"
+                            }`}
+                          >
+                            전체 ({rooms.length})
+                          </Button>
+                          <Button
+                            size="sm"
+                            onClick={() => setFilter("normal")}
+                            className={`rounded-full ${
+                              filter === "normal" 
+                                ? "bg-gradient-to-r from-purple-600 to-pink-600 text-white" 
+                                : "border border-gray-300 hover:bg-purple-50"
+                            }`}
+                          >
+                            일반 ({rooms.filter(r => r.mode === "normal").length})
+                          </Button>
+                          
+                          <Button
+                            size="sm"
+                            onClick={() => setFilter("simulation")}
+                            className={`rounded-full ${
+                              filter === "simulation" 
+                                ? "bg-gradient-to-r from-purple-600 to-pink-600 text-white" 
+                                : "border border-gray-300 hover:bg-purple-50"
+                            }`}
+                          >
+                            시뮬레이션 ({rooms.filter(r => r.mode === "simulation").length})
+                          </Button>
                         </div>
-                      ))}
-                    </div>
+                        
+                        {/* 검색창 */}
+                        <div className="relative">
+                          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                          <input
+                            type="text"
+                            placeholder="대화 검색..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="w-full pl-10 pr-4 py-2 rounded-xl border border-gray-200 focus:border-purple-400 focus:ring-2 focus:ring-purple-100 transition-all"
+                          />
+                        </div>
+                      </div>
+
+                      {/* 필터링된 목록 */}
+                      {filteredRooms.length === 0 ? (
+                        <div className="py-16 text-center">
+                          <p className="text-gray-600 mb-2">검색 결과가 없어요</p>
+                          <p className="text-sm text-gray-500">다른 검색어를 입력해보세요</p>
+                        </div>
+                      ) : (
+                        <div className="space-y-4">
+                          {filteredRooms.map((session, idx) => (
+                            <div
+                              key={session.id}
+                              className="group flex items-center justify-between p-5 border border-gray-100 rounded-2xl hover:border-purple-200 hover:shadow-md transition-all bg-white"
+                              style={{
+                                animation: `fade-in 0.3s ease-out ${idx * 0.05}s both`
+                              }}
+                            >
+                              <div className="flex items-center gap-4">
+                                <div className={`w-14 h-14 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform ${
+                                  session.mode === "simulation" 
+                                    ? "bg-gradient-to-br from-blue-100 to-purple-100" 
+                                    : "bg-gradient-to-br from-purple-100 to-pink-100"
+                                }`}>
+                                  {session.mode === "simulation" ? (
+                                    <Sparkles className="w-7 h-7 text-blue-600" />
+                                  ) : (
+                                    <MessageCircle className="w-7 h-7 text-purple-600" />
+                                  )}
+                                </div>
+
+                                <div>
+                                  <div className="flex items-center gap-2 mb-1">
+                                    <h4 className="font-semibold text-gray-900">
+                                      {session.topic}
+                                    </h4>
+                                    {session.mbti && session.mode === "simulation" && (
+                                      <span className="text-xs font-medium text-blue-600 bg-blue-50 px-2 py-1 rounded-full">
+                                        {session.mbti}
+                                      </span>
+                                    )}
+                                  </div>
+                                  <p className="text-sm text-gray-600">
+                                    {session.date}
+                                    {session.duration ? ` · ${session.duration}` : ""}
+                                  </p>
+                                </div>
+                              </div>
+
+                              <div className="flex items-center gap-3">
+                                <Badge 
+                                  variant="secondary"
+                                  className={
+                                    session.mode === "simulation"
+                                      ? "bg-blue-100 text-blue-800 border-blue-200"
+                                      : "bg-purple-100 text-purple-800 border-purple-200"
+                                  }
+                                >
+                                  {session.mode === "simulation" ? "시뮬레이션" : "일반"}
+                                </Badge>
+
+                                <Badge 
+                                  variant="secondary"
+                                  className={
+                                    session.status === "LOCKED"
+                                      ? "bg-amber-100 text-amber-800 border-amber-200"
+                                      : session.status === "ENDED"
+                                      ? "bg-gray-100 text-gray-700 border-gray-200"
+                                      : "bg-green-100 text-green-800 border-green-200"
+                                  }
+                                >
+                                  {renderStatusLabel(session.status)}
+                                </Badge>
+
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="text-purple-600 hover:text-purple-700 hover:bg-purple-50"
+                                  onClick={() => {
+                                    if (session.mode === "simulation") {
+                                      router.push(`/chat?mode=simulation&id=${session.id}`);
+                                    } else {
+                                      localStorage.setItem(STORAGE_KEY, session.id);
+                                      router.push("/chat");
+                                    }
+                                  }}
+                                >
+                                  이어가기
+                                </Button>
+                                
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm"
+                                  className="text-gray-500 hover:text-red-600 hover:bg-red-50"
+                                  onClick={(e) => { 
+                                    e.stopPropagation(); 
+                                    deleteRoom(session.id, session.mode); 
+                                  }}
+                                  disabled={deletingRoomId === session.id}
+                                >
+                                  {deletingRoomId === session.id ? "삭제 중..." : "삭제"}
+                                </Button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </>
                   )}
                 </CardContent>
               </Card>
@@ -524,7 +695,7 @@ export function MyPage() {
                     나를 더 잘 이해하기 위한 정보
                   </CardTitle>
                   <CardDescription className="text-gray-600">
-                    더 나은 상담을 위해 정보를 업데이트할 수 있어요.
+                    더 나은 대화를 위해 정보를 업데이트할 수 있어요.
                   </CardDescription>
                 </CardHeader>
                 <CardContent>

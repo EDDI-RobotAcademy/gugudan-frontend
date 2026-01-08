@@ -191,25 +191,25 @@ export default function HomeClient() {
         </main>
       </section>
 
-      <section id="start" className="bg-white">
+      <section id="start" className="bg-gradient-to-b from-purple-50 to-pink-50">
         <div className="max-w-6xl mx-auto pt-20 pb-28">
           <EmpathyHowDifferentSection />
         </div>
       </section>
 
-      <section id="about" className="bg-white">
+      <section id="about" className="bg-gradient-to-b from-purple-50 to-pink-50">
         <div className="max-w-6xl mx-auto px-4 pt-20 pb-28">
           <ServiceSection />
         </div>
       </section>
 
-      <section id="mbti" className="bg-white">
+      <section id="mbti" className="bg-gradient-to-b from-purple-50 to-pink-50">
         <div className="max-w-6xl mx-auto px-4 pt-20 pb-28">
           <MbtiSection />
         </div>
       </section>
 
-      <section id="team" className="bg-white">
+      <section id="team" className="bg-gradient-to-b from-purple-50 to-pink-50">
         <div className="max-w-6xl mx-auto px-4 pt-20 pb-28">
           <TeamSection />
         </div>

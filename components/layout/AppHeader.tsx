@@ -142,21 +142,40 @@ export function AppHeader() {
                 ref={menuRef}
                 className="absolute right-0 top-full mt-2 w-60 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-lg p-2"
               >
-                {/* 섹션 네비 */}
-                <div className="px-2 py-2">
-                  <div className="text-xs text-gray-500 dark:text-gray-400 px-1 mb-2">이동</div>
-                  {NAV_ITEMS.map((it) => (
-                    <button
-                      key={it.id}
-                      className="w-full text-left px-3 py-2 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-gray-900 dark:text-gray-100"
-                      onClick={() => onNav(it.id)}
-                    >
-                      {it.label}
-                    </button>
-                  ))}
-                </div>
+                {isAuthenticated && (
+                  <>
+                    <div className="px-2 py-2">
+                      <div className="text-xs text-gray-500 dark:text-gray-400 px-1 mb-2">빠른 대화 시작</div>
+                      
+                      <button
+                        className="w-full text-left px-3 py-2 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-gray-900 dark:text-gray-100"
+                        onClick={() => {
+                          close();
+                          localStorage.removeItem("selectedRoomId"); // 기존 대화 ID 제거
+                          router.push("/chat");
+                        }}
+                      >
+                        <div className="text-left">
+                          <div className="text-sm font-medium text-gray-900 dark:text-gray-100">이야기 시작하기</div>
+                        </div>
+                      </button>
 
-                <div className="my-1 h-px bg-gray-100 dark:bg-gray-700" />
+                      <button
+                        className="w-full text-left px-3 py-2 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-gray-900 dark:text-gray-100"
+                        onClick={() => {
+                          close();
+                          router.push("/chat?mbti=INFP&topic=dating&mode=simulation");
+                        }}
+                      >
+                        <div className="text-left">
+                          <div className="text-sm font-medium text-gray-900 dark:text-gray-100">MBTI 시뮬레이션</div>
+                        </div>
+                      </button>
+                    </div>
+
+                    <div className="my-1 h-px bg-gray-100 dark:bg-gray-700" />
+                  </>
+                )}
 
                 {/* 고객 지원 */}
                 <div className="px-2 py-2">
@@ -237,6 +256,42 @@ export function AppHeader() {
               <div className="absolute inset-0 bg-black/30 dark:bg-black/60" onClick={close} />
               <div className="absolute bottom-0 left-0 right-0 rounded-t-3xl bg-white dark:bg-gray-800 p-4 shadow-2xl">
                 <div className="mx-auto h-1 w-10 rounded-full bg-gray-200 dark:bg-gray-600 mb-3" />
+                {isAuthenticated && (
+                  <>
+                    <div className="mb-3">
+                      <div className="text-xs text-gray-500 dark:text-gray-400 px-4 mb-2">빠른 대화 시작</div>
+                      
+                      <button
+                        className="w-full text-left px-3 py-2 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-gray-900 dark:text-gray-100"
+                        onClick={() => {
+                          close();
+                          localStorage.removeItem("selectedRoomId");
+                          router.push("/chat");
+                        }}
+                      >
+                        <div className="text-left">
+                          <div className="font-medium text-gray-900 dark:text-gray-100">일반 상담</div>
+                          <div className="text-xs text-gray-600 dark:text-gray-400">자유롭게 대화하기</div>
+                        </div>
+                      </button>
+
+                      <button
+                        className="w-full text-left px-3 py-2 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-gray-900 dark:text-gray-100"
+                        onClick={() => {
+                          close();
+                          router.push("/chat?mbti=INFP&topic=dating&mode=simulation");
+                        }}
+                      >
+                        <div className="text-left">
+                          <div className="font-medium text-gray-900 dark:text-gray-100">MBTI 시뮬레이션</div>
+                          <div className="text-xs text-gray-600 dark:text-gray-400">가상 대화 연습</div>
+                        </div>
+                      </button>
+                    </div>
+
+                    <div className="my-2 h-px bg-gray-100 dark:bg-gray-700" />
+                  </>
+                )}
 
                 {/* 섹션 네비 */}
                 <div className="grid gap-2 mb-2">
