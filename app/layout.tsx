@@ -9,25 +9,31 @@ const SITE_NAME = process.env.NEXT_PUBLIC_SITE_NAME ?? "Love-Note";
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: `${SITE_NAME} - 관계를 정리하는 AI 가이드`,
+    default: `${SITE_NAME} - MBTI 연애 결혼 썸 고민 정리 AI 대화`,
     template: `%s | ${SITE_NAME}`,
   },
-  description: "MBTI 기반 관계 가이드와 상황별 대화 정리를 제공합니다.",
+  description: "MBTI 기반 연애 상담, 결혼 상담, 썸 고민 해결 서비스. MBTI 연애 가이드, MBTI 결혼 가이드, MBTI 썸 가이드로 관계 고민과 대화 정리를 도와드립니다.",
   alternates: {
     canonical: "/",
   },
   icons: {
     icon: [
+      { url: "/icon.svg", type: "image/svg+xml" }, // 커스텀 아이콘 우선
+      { url: "/favicon.ico", sizes: "any" }, // 폴백용 (나중에 커스텀 ICO로 교체 필요)
+    ],
+    shortcut: [
       { url: "/icon.svg", type: "image/svg+xml" },
-      { url: "/favicon.ico", sizes: "any" },
+    ],
+    apple: [
+      { url: "/icon.svg", type: "image/svg+xml" },
     ],
   },
   openGraph: {
     type: "website",
     url: SITE_URL,
     siteName: SITE_NAME,
-    title: `${SITE_NAME} - 관계를 정리하는 AI 가이드`,
-    description: "MBTI 기반 관계 가이드와 상황별 대화 정리를 제공합니다.",
+    title: `${SITE_NAME} - MBTI 연애 결혼 썸 고민 정리 AI 대화`,
+    description: "MBTI 기반으로 연애, 결혼, 썸에서 이야기를 나누고 대화를 정리해가는 서비스. MBTI 연애 가이드, MBTI 결혼 가이드, MBTI 썸 가이드로 관계 고민과 대화를 정리해요.",
     locale: "ko_KR",
   },
   robots: {
@@ -46,6 +52,44 @@ export default function RootLayout({
     return (
         <html lang="ko">
         <head>
+            {/* Favicon - 커스텀 아이콘 우선 설정 */}
+            <link rel="icon" href="/icon.svg" type="image/svg+xml" />
+            <link rel="icon" href="/favicon.ico" sizes="any" />
+            <link rel="shortcut icon" href="/icon.svg" type="image/svg+xml" />
+            {/* 구조화된 데이터 (JSON-LD) */}
+            <script
+                type="application/ld+json"
+                dangerouslySetInnerHTML={{
+                    __html: JSON.stringify({
+                        "@context": "https://schema.org",
+                        "@type": "Organization",
+                        name: SITE_NAME,
+                        url: SITE_URL,
+                        description: "MBTI 기반 관계 가이드와 상황별 대화 정리를 제공하는 AI 서비스",
+                        logo: `${SITE_URL}/icon.svg`,
+                    }),
+                }}
+            />
+            <script
+                type="application/ld+json"
+                dangerouslySetInnerHTML={{
+                    __html: JSON.stringify({
+                        "@context": "https://schema.org",
+                        "@type": "WebSite",
+                        name: SITE_NAME,
+                        url: SITE_URL,
+                        description: "MBTI 기반 관계 가이드와 상황별 대화 정리를 제공합니다.",
+                        potentialAction: {
+                            "@type": "SearchAction",
+                            target: {
+                                "@type": "EntryPoint",
+                                urlTemplate: `${SITE_URL}/faq?search={search_term_string}`,
+                            },
+                            "query-input": "required name=search_term_string",
+                        },
+                    }),
+                }}
+            />
             {/* 1. 구글 애드센스 스크립트 추가 */}
             <Script
                 async

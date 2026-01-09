@@ -1,4 +1,5 @@
 import { MetadataRoute } from "next";
+import { FAQ_TOPICS } from "./mbti/_content/faqTopics";
 
 // 환경변수 변경 필요
 const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
@@ -43,5 +44,27 @@ export default function sitemap(): MetadataRoute.Sitemap {
     }))
   );
 
-  return [...staticPages, ...mbtiPages];
+  // FAQ 인덱스 페이지
+  const faqIndexPages: MetadataRoute.Sitemap = MBTI_TYPES.flatMap((mbti) =>
+    CATEGORIES.map((category) => ({
+      url: `${BASE_URL}/mbti/${mbti}/${category}/faq`,
+      lastModified: new Date(),
+      changeFrequency: "weekly",
+      priority: 0.8,
+    }))
+  );
+
+  // FAQ 토픽 페이지
+  const faqTopicPages: MetadataRoute.Sitemap = MBTI_TYPES.flatMap((mbti) =>
+    CATEGORIES.flatMap((category) =>
+      FAQ_TOPICS.filter((topic) => topic.category === category).map((topic) => ({
+        url: `${BASE_URL}/mbti/${mbti}/${category}/faq/${topic.key}`,
+        lastModified: new Date(),
+        changeFrequency: "weekly",
+        priority: 0.7,
+      }))
+    )
+  );
+
+  return [...staticPages, ...mbtiPages, ...faqIndexPages, ...faqTopicPages];
 }

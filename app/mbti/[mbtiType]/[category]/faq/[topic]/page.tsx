@@ -39,16 +39,42 @@ export async function generateMetadata(
   const topicKey = safeTopicKey(topicRaw);
   const topic = getTopicDef(topicKey);
 
-  const title = `${mbtiUpper} ${categoryTitle} FAQ - ${topic.title}`;
-  const description = `${mbtiUpper} ${categoryTitle}에서 자주 나오는 질문(${topic.title})을 정리했어요.`;
+  const title = `MBTI ${mbtiUpper} ${categoryTitle} ${topic.title} FAQ | ${mbtiUpper} ${categoryTitle} ${topic.title} 질문`;
+  const keywords = topic.hintKeywords.join(", ");
+  const description = `MBTI ${mbtiUpper} ${categoryTitle} ${topic.title} FAQ를 확인해보세요. ${mbtiUpper} ${categoryTitle}에서 자주 나오는 질문(${topic.title})을 정리했어요. ${keywords} 등 ${mbtiUpper} ${categoryTitle} ${topic.title} 고민 해결에 도움이 되는 답변을 제공합니다.`;
 
   const canonical = `/mbti/${mbtiSlug}/${category}/faq/${topicKey}`;
+
+  const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+  const SITE_NAME = process.env.NEXT_PUBLIC_SITE_NAME ?? "Love-Note";
 
   return {
     title,
     description,
     alternates: { canonical },
-    openGraph: { title, description },
+    openGraph: {
+      type: "article",
+      url: `${SITE_URL}${canonical}`,
+      siteName: SITE_NAME,
+      locale: "ko_KR",
+      title: `${title} | ${SITE_NAME}`,
+      description,
+      images: [
+        {
+          url: `${SITE_URL}/og/mbti-default.png`,
+          width: 1200,
+          height: 630,
+          alt: title,
+        },
+      ],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: `${title} | ${SITE_NAME}`,
+      description,
+      images: [`${SITE_URL}/og/mbti-default.png`],
+    },
+    robots: { index: true, follow: true },
   };
 }
 
