@@ -7,7 +7,7 @@ import { ChatMessage, Gender, Topic, ChatDetailResponse, DBMessage } from "./Sim
 
 interface ChatRoomProps {
   initialChatId: string | null;
-  onNewChatStarted: () => void;
+  onNewChatStarted: (chatId: string) => void;
 }
 
 const GENDERS: Gender[] = ["여성", "남성"];
@@ -24,16 +24,27 @@ const TOPICS: Topic[] = [
 export default function SimulationRoom({ initialChatId, onNewChatStarted }: ChatRoomProps) {
   const searchParams = useSearchParams();
   const scrollRef = useRef<HTMLDivElement>(null);
-  const [isStarted, setIsStarted] = useState<boolean>(!!initialChatId);
-  const [isLoading, setIsLoading] = useState<boolean>(false);
+  // 상태 선언
   const [chatId, setChatId] = useState<string | null>(initialChatId);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState<string>("");
-
   const [selectedMbti, setSelectedMbti] = useState<string>("");
   const [selectedTopic, setSelectedTopic] = useState<string>("dating");
   const [customTopicText, setCustomTopicText] = useState<string>("");
   const [selectedGender, setSelectedGender] = useState<Gender>("여성");
+  
+  // isStarted는 chatId 또는 initialChatId 중 하나라도 있으면 true
+  // 새로 생성한 채팅의 경우 chatId는 있지만 initialChatId는 아직 업데이트되지 않을 수 있음
+  const [isStarted, setIsStarted] = useState<boolean>(!!initialChatId);
+  
+  // chatId 또는 initialChatId가 변경될 때 isStarted 동기화
+  useEffect(() => {
+    const shouldBeStarted = !!(chatId || initialChatId);
+    if (isStarted !== shouldBeStarted) {
+      setIsStarted(shouldBeStarted);
+    }
+  }, [initialChatId, chatId]); // isStarted를 dependency에서 제거하여 무한 루프 방지
 
   // 스크롤 최하단 이동
   useEffect(() => {
@@ -42,19 +53,59 @@ export default function SimulationRoom({ initialChatId, onNewChatStarted }: Chat
     }
   }, [messages]);
 
-  // URL 파라미터 초기화
+  // URL 파라미터 초기화 (최초 마운트 시에만)
   useEffect(() => {
-    if (!initialChatId) {
+    if (!initialChatId && !selectedMbti) {
       const mbtiParam = searchParams.get("mbti")?.toUpperCase();
       const topicParam = searchParams.get("topic");
       if (mbtiParam && MBTI_TYPES.includes(mbtiParam)) setSelectedMbti(mbtiParam);
       if (topicParam && TOPICS.some(t => t.id === topicParam)) setSelectedTopic(topicParam);
     }
-  }, [searchParams, initialChatId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // 최초 마운트 시에만 실행 (searchParams는 의도적으로 dependency에서 제외)
+
 
   // 채팅 내역 로드
   useEffect(() => {
     if (initialChatId) {
+      // initialChatId가 있고, 이미 같은 chatId이고 메시지가 있으면 스킵 (기존 채팅 재선택)
+      if (chatId === initialChatId && messages.length > 0 && !isLoading) {
+        return;
+      }
+      
+      // 새로 생성한 채팅인 경우 (chatId는 이미 설정되었고, 스트리밍으로 메시지가 추가됨)
+      // initialChatId가 업데이트되었으므로 서버에서 메타데이터만 가져옴
+      if (chatId === initialChatId && chatId !== null) {
+        // 서버에서 MBTI, 성별, 토픽 정보만 가져옴 (메시지는 스트리밍으로 이미 추가됨)
+        const loadMetadata = async () => {
+          try {
+            const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/simulation/${initialChatId}`, { 
+              credentials: "include" 
+            });
+            if (res.ok) {
+              const data: ChatDetailResponse = await res.json();
+              setSelectedMbti(data.mbti);
+              setSelectedGender(data.gender);
+              const matchedTopic = TOPICS.find(t => t.label === data.topic);
+              if (matchedTopic) setSelectedTopic(matchedTopic.id);
+              else {
+                setSelectedTopic("custom");
+                setCustomTopicText(data.topic);
+              }
+              // 채팅 화면으로 전환 확인
+              if (!isStarted) {
+                setIsStarted(true);
+              }
+            }
+          } catch (error) {
+            console.error("[SimulationRoom] 메타데이터 로드 실패:", error);
+          }
+        };
+        loadMetadata();
+        return;
+      }
+      
+      // initialChatId가 있고, 다른 채팅이거나 처음 로드하는 경우
       const loadHistory = async () => {
         setIsLoading(true);
         try {
@@ -63,7 +114,8 @@ export default function SimulationRoom({ initialChatId, onNewChatStarted }: Chat
           });
           if (res.ok) {
             const data: ChatDetailResponse = await res.json();
-            if (data.messages && Array.isArray(data.messages)) {
+            
+            if (data.messages && Array.isArray(data.messages) && data.messages.length > 0) {
               const formattedMessages: ChatMessage[] = data.messages.map((m: DBMessage, index: number) => ({
                 id: `${data.id}-${index}-${m.timestamp}`,
                 role: m.role,
@@ -72,10 +124,12 @@ export default function SimulationRoom({ initialChatId, onNewChatStarted }: Chat
               }));
               setMessages(formattedMessages);
             }
+            
+            // 상태 업데이트
             setChatId(data.id);
             setSelectedMbti(data.mbti);
             setSelectedGender(data.gender);
-            setIsStarted(true);
+            setIsStarted(true); // 채팅 화면으로 전환
             const matchedTopic = TOPICS.find(t => t.label === data.topic);
             if (matchedTopic) setSelectedTopic(matchedTopic.id);
             else {
@@ -84,17 +138,27 @@ export default function SimulationRoom({ initialChatId, onNewChatStarted }: Chat
             }
           }
         } catch (error) {
-          console.error("채팅 내역 로드 실패:", error);
+          console.error("[SimulationRoom] 채팅 내역 로드 실패:", error);
         } finally {
           setIsLoading(false);
         }
       };
       loadHistory();
     } else {
-      setIsStarted(false);
-      setMessages([]);
+      // initialChatId가 null인 경우: 새 시뮬레이션 화면으로 전환
+      // "+ 새 시뮬레이션" 버튼을 누른 경우 (의도적으로 null로 설정)
+      // 이전 채팅 상태를 완전히 초기화하여 새 시뮬레이션 생성 가능하도록 함
+      
+      // 이전 채팅 상태 완전 초기화
       setChatId(null);
+      setMessages([]);
+      setIsStarted(false); // 설정 화면으로 전환
+      setSelectedMbti(""); // MBTI 초기화 (버튼 비활성화)
       setSelectedTopic(TOPICS[0].id);
+      setCustomTopicText("");
+      setSelectedGender("여성");
+      setInput("");
+      setIsLoading(false);
     }
   }, [initialChatId]);
 
@@ -143,8 +207,23 @@ export default function SimulationRoom({ initialChatId, onNewChatStarted }: Chat
   };
 
   const handleStartChat = async () => {
-    if (!selectedMbti) { alert("MBTI를 선택해주세요!"); return; }
-    if (selectedTopic === "custom" && !customTopicText.trim()) { alert("상황을 직접 입력해주세요."); return; }
+    // 필수 항목 체크 및 alert 표시
+    if (!selectedMbti) {
+      alert("MBTI를 선택해주세요!");
+      return;
+    }
+    if (!selectedGender) {
+      alert("성별을 선택해주세요!");
+      return;
+    }
+    if (!selectedTopic) {
+      alert("대화 상황을 선택해주세요!");
+      return;
+    }
+    if (selectedTopic === "custom" && !customTopicText.trim()) {
+      alert("상황을 직접 입력해주세요.");
+      return;
+    }
 
     setIsLoading(true);
     try {
@@ -160,13 +239,19 @@ export default function SimulationRoom({ initialChatId, onNewChatStarted }: Chat
 
       const newChatId = response.headers.get("X-Chat-Id");
       if (newChatId) {
+        // 즉시 채팅 화면으로 전환
         setChatId(newChatId);
-        setIsStarted(true); 
-        onNewChatStarted(); 
-        await consumeStream(response, "ai-initial");
+        setMessages([]); // 새 채팅이므로 메시지 초기화
+        setIsStarted(true); // 즉시 채팅 화면으로 전환 (useEffect에서도 동기화됨)
+        
+        // 부모에게 알려서 selectedChatId를 업데이트하도록 함
+        onNewChatStarted(newChatId);
+        
+        // 스트리밍 시작
+        await consumeStream(response, `ai-initial-${Date.now()}`);
       }
     } catch (error) {
-      console.error("Chat Start Error:", error);
+      console.error("[SimulationRoom] Chat Start Error:", error);
     } finally {
       setIsLoading(false);
     }
@@ -252,7 +337,11 @@ export default function SimulationRoom({ initialChatId, onNewChatStarted }: Chat
               </div>
             </div>
           </section>
-          <button onClick={handleStartChat} disabled={isLoading || !selectedMbti} className="w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white font-bold py-4 rounded-2xl shadow-lg hover:shadow-xl hover:from-purple-700 hover:to-pink-700 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
+          <button 
+            onClick={handleStartChat} 
+            disabled={isLoading}
+            className="w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white font-bold py-4 rounded-2xl shadow-lg hover:shadow-xl hover:from-purple-700 hover:to-pink-700 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
             {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <><Sparkles className="w-5 h-5" /> 가상 대화 시작하기</>}
           </button>
         </div>

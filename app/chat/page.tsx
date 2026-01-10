@@ -32,9 +32,9 @@ function ChatPageContent() {
   const [selectedSimId, setSelectedSimId] = useState<string | null>(urlSimId);
   const [refreshKey, setRefreshKey] = useState<number>(0);
 
-  // -- URL이 변경되면 selectedSimId 업데이트
+  // -- URL이 변경되면 selectedSimId 업데이트 (시뮬레이션 모드일 때만)
   useEffect(() => {
-    if (isSimulation && urlSimId) {
+    if (isSimulation) {
       setSelectedSimId(urlSimId);
     }
   }, [isSimulation, urlSimId]);
@@ -99,7 +99,10 @@ function ChatPageContent() {
             
             <SimulationRoom 
               initialChatId={selectedSimId} 
-              onNewChatStarted={() => setRefreshKey((prev: number) => prev + 1)}
+              onNewChatStarted={(newChatId: string) => {
+                setSelectedSimId(newChatId);
+                setRefreshKey((prev: number) => prev + 1);
+              }}
             />
           </main>
         </div>
