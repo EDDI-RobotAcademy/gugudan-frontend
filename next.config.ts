@@ -20,6 +20,19 @@ const nextConfig: NextConfig = {
         ],
     },
 
+    async rewrites() {
+        return [
+            {
+                source: '/og/default.png',
+                destination: '/og?type=default',
+            },
+            {
+                source: '/og/mbti-default.png',
+                destination: '/og?type=mbti-default',
+            },
+        ];
+    },
+
     async headers() {
         return [
             {
