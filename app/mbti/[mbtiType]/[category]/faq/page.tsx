@@ -37,16 +37,40 @@ export async function generateMetadata(
 
   const categoryTitle = categoryInfo[category]?.title ?? "연애";
 
-  const title = `${mbtiUpper} ${categoryTitle} FAQ | 자주 묻는 질문`;
-  const description = `${mbtiUpper}의 ${categoryTitle}에서 자주 나오는 질문을 주제별로 정리했어요. 애정표현, 연락, 갈등, 관계 속도 등.`;
+  const title = `MBTI ${mbtiUpper} ${categoryTitle} FAQ | ${mbtiUpper} ${categoryTitle} 자주 묻는 질문`;
+  const description = `MBTI ${mbtiUpper} ${categoryTitle} FAQ를 확인해보세요. ${mbtiUpper}의 ${categoryTitle}에서 자주 나오는 질문을 주제별로 정리했어요. ${categoryTitle} 애정표현, ${categoryTitle} 연락, ${categoryTitle} 갈등, ${categoryTitle} 관계 속도, ${categoryTitle} 싸움, ${categoryTitle} 고백 등 ${mbtiUpper} ${categoryTitle} 고민 정리에 도움이 되는 FAQ입니다.`;
 
   const canonical = `/mbti/${mbtiSlug}/${category}/faq`;
+  const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+  const SITE_NAME = process.env.NEXT_PUBLIC_SITE_NAME ?? "Love-Note";
 
   return {
     title,
     description,
     alternates: { canonical },
-    openGraph: { title, description },
+    openGraph: {
+      type: "article",
+      url: `${SITE_URL}${canonical}`,
+      siteName: SITE_NAME,
+      locale: "ko_KR",
+      title: `${title} | ${SITE_NAME}`,
+      description,
+      images: [
+        {
+          url: `${SITE_URL}/og/mbti-default.png`,
+          width: 1200,
+          height: 630,
+          alt: title,
+        },
+      ],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: `${title} | ${SITE_NAME}`,
+      description,
+      images: [`${SITE_URL}/og/mbti-default.png`],
+    },
+    robots: { index: true, follow: true },
   };
 }
 

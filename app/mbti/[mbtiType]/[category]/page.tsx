@@ -32,10 +32,10 @@ export async function generateMetadata(
   const cat = categoryInfo[category];
   const mbtiMeta = mbtiDescriptions[mbti] ?? { name: "MBTI 유형", oneLiner: "" };
 
-  const title = `${mbti} ${cat.title} 가이드`;
+  const title = `MBTI ${mbti} ${cat.title} 가이드 | ${mbti} ${cat.title} 고민 정리`;
   const description =
     `${mbtiMeta.name}${mbtiMeta.oneLiner ? ` · ${mbtiMeta.oneLiner}` : ""} — ` +
-    `MBTI 기반으로 ${cat.title}에서 자주 생기는 흐름과 대화 포인트를 정리했어요.`;
+    `MBTI ${mbti} ${cat.title} 가이드로 ${cat.title} 고민을 정리하세요. MBTI 기반으로 ${cat.title}에서 이야기를 나누고 대화를 정리해가며, ${cat.title}에서 자주 생기는 흐름과 대화 포인트를 정리했어요. ${mbti} ${cat.title} 팁과 조언을 확인해보세요.`;
 
   // ✅ canonical은 "정규화된 값"으로 고정 (SEO 안정)
   const canonicalPath = `/mbti/${mbti.toLowerCase()}/${category}`;
