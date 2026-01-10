@@ -10,7 +10,7 @@ import {Button} from "@/components/ui/Button";
 import {Avatar, AvatarFallback} from "@/components/ui/Avatar";
 import {Badge} from "@/components/ui/Badge";
 import {Tabs, TabsContent, TabsList, TabsTrigger} from "@/components/ui/Tabs";
-import {MessageCircle, User as UserIcon, Sparkles, Heart, Calendar, Search, FileText} from "lucide-react";
+import {MessageCircle, User as UserIcon, Sparkles, Heart, Calendar, Search, FileText, AlertTriangle, ChevronDown, ChevronRight} from "lucide-react";
 import {STORAGE_KEYS} from "@/lib/constants";
 import {SurveyModal} from "@/components/modal/Surveymodal";
 import {SurveyContent} from "@/components/modal/_content/survey";
@@ -88,7 +88,7 @@ function renderStatusLabel(s: ConsultationSession["status"]) {
 
 export function MyPage() {
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
 
   const API_BASE =
     process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:33333";
@@ -103,6 +103,8 @@ export function MyPage() {
   const [editGender, setEditGender] = useState<string>("");
   const [editMbti, setEditMbti] = useState<string>("");
   const [isSaving, setIsSaving] = useState(false);
+  const [isWithdrawing, setIsWithdrawing] = useState(false);
+  const [isWithdrawSectionOpen, setIsWithdrawSectionOpen] = useState(false);
 
   const [profileGender, setProfileGender] = useState<string>("");
   const [profileMbti, setProfileMbti] = useState<string>("");
@@ -450,6 +452,40 @@ export function MyPage() {
       alert(e?.message ?? "저장 중 오류가 발생했습니다.");
     } finally {
       setIsSaving(false);
+    }
+  }
+
+  async function handleWithdraw() {
+    const firstConfirm = confirm(
+      "정말 회원탈퇴를 하시겠어요?\n\n탈퇴 시 모든 데이터가 삭제되며 복구할 수 없어요."
+    );
+    if (!firstConfirm) return;
+
+    const secondConfirm = confirm(
+      "마지막 확인입니다.\n\n정말 탈퇴하시겠어요?"
+    );
+    if (!secondConfirm) return;
+
+    setIsWithdrawing(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/v1/account/withdraw`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(text || `탈퇴 실패: ${res.status}`);
+      }
+
+      alert("회원탈퇴가 완료되었습니다.");
+      // 로그아웃 처리 및 홈으로 이동
+      await logout();
+      router.push("/");
+    } catch (e: any) {
+      alert(e?.message ?? "회원탈퇴 중 오류가 발생했습니다.");
+    } finally {
+      setIsWithdrawing(false);
     }
   }
 
@@ -956,6 +992,44 @@ export function MyPage() {
                         </Button>
                       </div>
                     )}
+
+                    {/* 회원탈퇴 섹션 */}
+                    <div className="pt-8 mt-8 border-t border-gray-200">
+                      <div className="rounded-xl bg-red-50 border border-red-100 overflow-hidden">
+                        {/* 헤더 - 클릭 가능 */}
+                        <button
+                          onClick={() => setIsWithdrawSectionOpen(!isWithdrawSectionOpen)}
+                          className="w-full flex items-center gap-3 p-4 hover:bg-red-100/50 transition-colors"
+                        >
+                          <AlertTriangle className="w-5 h-5 text-red-600 flex-shrink-0" />
+                          <h3 className="flex-1 text-left text-sm font-semibold text-red-900">
+                            회원탈퇴
+                          </h3>
+                          {isWithdrawSectionOpen ? (
+                            <ChevronDown className="w-4 h-4 text-red-600" />
+                          ) : (
+                            <ChevronRight className="w-4 h-4 text-red-600" />
+                          )}
+                        </button>
+                        
+                        {/* 내용 - 접혔다 펼쳐짐 */}
+                        {isWithdrawSectionOpen && (
+                          <div className="px-4 pb-4">
+                            <p className="text-xs text-red-700 mb-4">
+                              탈퇴하시면 모든 데이터가 삭제되며 복구할 수 없어요.
+                            </p>
+                            <Button
+                              variant="outline"
+                              onClick={handleWithdraw}
+                              disabled={isWithdrawing}
+                              className="border-red-300 text-red-700 hover:bg-red-100 hover:text-red-800"
+                            >
+                              {isWithdrawing ? "처리 중..." : "회원탈퇴"}
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
