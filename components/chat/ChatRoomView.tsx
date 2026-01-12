@@ -3,10 +3,10 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import {ChatMessage} from "./ChatMessage";
 import {Feedback} from "./Feedback";
+import { useAuth } from "@/hooks/useAuth";
 import {SurveyModal} from "../modal/Surveymodal";
-import SurveyTestButton from "@/components/home/SurveyTestButton";
-import { SurveyContent, fallbackSurveyContent } from "../modal/_content/survey";
-
+import {SurveyContent} from "../modal/_content/survey";
+import {SummaryModal} from "./SummaryModal";
 import {
     ArrowsRightLeftIcon,
     ChatBubbleLeftEllipsisIcon,
@@ -17,7 +17,8 @@ import {
     StopIcon,
     XMarkIcon,
     PaperClipIcon,
-    DocumentIcon
+    DocumentIcon,
+    DocumentTextIcon
 } from "@heroicons/react/24/outline";
 import Image from "next/image";
 
@@ -50,6 +51,8 @@ interface ChatRequestPayload {
 
 
 export function ChatRoomView({ roomId, onRoomCreated }: Props) {
+  const { user } = useAuth();
+
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -57,9 +60,13 @@ export function ChatRoomView({ roomId, onRoomCreated }: Props) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [targetMessageId, setTargetMessageId] = useState<number | null>(null);
   const [feedbackScore, setFeedbackScore] = useState<"LIKE" | "DISLIKE" | null>(null);
-  // 설문조사 상태
+  // 설문 관련 상태
+  const [isSurveyCompleted, setIsSurveyCompleted] = useState(false);
   const [isSurveyOpen, setIsSurveyOpen] = useState(false);
   const [surveyContent, setSurveyContent] = useState<SurveyContent | null>(null);
+  
+  // 요약 모달 상태
+  const [isSummaryModalOpen, setIsSummaryModalOpen] = useState(false);
 
   const MAX_FILES = 4;
   const [selectedFiles, setSelectedFiles] = useState<FileItem[]>([]);
@@ -84,48 +91,91 @@ export function ChatRoomView({ roomId, onRoomCreated }: Props) {
     inputRef.current?.focus();
   }, [roomId]);
 
-  /** 설문 데이터 가져오기 */
+  // 페이지 로딩 시 설문 여부 확인 (backend에서 불러오기) - /survey/status 엔드포인트 사용
+  useEffect(() => {
+    const checkSurveyStatus = async () => {
+      try {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/survey/status`, {
+          credentials: "include",
+        });
+
+        if (!response.ok) {
+          return;
+        }
+
+        const data = await response.json();
+        
+        // completed 필드로 설문 완료 여부 확인
+        setIsSurveyCompleted(data?.completed === true);
+      } catch (error) {
+        // 설문 상태 확인 실패 시 조용히 처리
+      }
+    };
+
+    // user_id 기반이므로 roomId 없이도 확인 가능
+    if (user) {
+      checkSurveyStatus();
+    }
+  }, [user]);
+
+  // 설문 데이터 가져오기
   const fetchSurvey = useCallback(async () => {
+    if (isSurveyCompleted) return;
+
     try {
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/survey/questions`, {
         credentials: "include",
       });
 
       if (!response.ok) {
-        console.log("Survey API failed:", response.status);
         return;
       }
 
       const data = await response.json();
 
-      // 서버가 show: false 반환
-      if (!data?.show) {
-        console.log("Survey not shown:", data.reason);
-        return;
-      }
-
-      // 설문 표시
-      const hasValidQuestions = Array.isArray(data?.questions) && data.questions.length > 0;
-      if (!hasValidQuestions) {
-        console.warn("Invalid questions, using fallback");
-        setSurveyContent(fallbackSurveyContent);
-      } else {
-        setSurveyContent({
-          title: data.title ?? fallbackSurveyContent.title,
-          subtitle: data.subtitle ?? fallbackSurveyContent.subtitle,
-          footer: data.footer ?? fallbackSurveyContent.footer,
-          questions: data.questions,
+      // 설문 데이터 검증 및 설정
+      if (data && data.questions && Array.isArray(data.questions)) {
+        // 질문 데이터 검증
+        const validQuestions = data.questions.filter((q: any) => {
+          // 기본 구조 검증
+          if (!q || typeof q !== "object") return false;
+          
+          // 타입별 필수 필드 검증
+          if (q.type === "single") {
+            return q.question && Array.isArray(q.options) && q.options.length > 0;
+          } else if (q.type === "text") {
+            return q.question && q.id;
+          } else if (q.type === "email") {
+            return q.question && q.id;
+          } else if (q.type === "done") {
+            return q.title;
+          }
+          
+          return false;
         });
+
+        if (validQuestions.length === 0) {
+          console.error("[ChatRoomView] 유효한 설문 질문이 없습니다.");
+          return;
+        }
+
+        setSurveyContent({
+          title: data.title || "간단한 피드백을 들려주세요",
+          subtitle: data.subtitle,
+          footer: data.footer,
+          questions: validQuestions,
+        });
+        setIsSurveyOpen(true);
+      } else {
+        console.error("[ChatRoomView] 설문 데이터 형식이 올바르지 않습니다.", data);
       }
-
-      setIsSurveyOpen(true);
     } catch (error) {
-      console.error("Failed to fetch survey:", error);
+      console.error("[ChatRoomView] 설문 데이터 가져오기 에러:", error);
     }
-  }, []);
+  }, [isSurveyCompleted]);
 
-  /** 설문 완료 처리 */
-  const handleSurveyComplete = async (answers: Record<string, string>) => {
+  // 설문 완료 처리
+  const handleSurveyComplete = useCallback(async (answers: Record<string, string>) => {
     try {
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/survey/responses`, {
         method: "POST",
@@ -135,12 +185,21 @@ export function ChatRoomView({ roomId, onRoomCreated }: Props) {
       });
 
       if (response.ok) {
-        console.log("Survey submitted successfully");
+        // 설문 완료 상태로 변경
+        setIsSurveyCompleted(true);
+        // 설문 상태 다시 확인
+        const statusResponse = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/survey/status`, {
+          credentials: "include",
+        });
+        if (statusResponse.ok) {
+          const statusData = await statusResponse.json();
+          setIsSurveyCompleted(statusData?.completed === true);
+        }
       }
     } catch (e) {
-      console.error("Failed to submit survey:", e);
+      // 설문 제출 실패 시 조용히 처리
     }
-  };
+  }, []);
 
   // 파일 선택 핸들러
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -364,8 +423,7 @@ const handleSendMessage = async (textToSend?: string) => {
       const newest = rooms[0];
       if (newest?.room_id) onRoomCreated(newest.room_id);
     }
-    // 메시지 전송 후 설문 체크
-    await fetchSurvey();
+    // 설문은 사용자가 직접 버튼을 눌러야 함 (자동 트리거 제거)
   } catch (error: unknown) {
     if (!(error instanceof Error && error.name === "AbortError")) console.error(error);
   } finally {
@@ -463,20 +521,56 @@ const handleSendMessage = async (textToSend?: string) => {
   return (
     <div className="flex flex-col flex-1 h-full bg-gradient-to-b from-purple-50 to-pink-50 dark:from-gray-900 dark:to-gray-950 relative">
       {/* Header */}
-      <header className="flex items-center justify-between px-4 md:px-6 py-4 border-b border-purple-100 dark:border-gray-700 bg-white/60 dark:bg-gray-900/60 backdrop-blur-md sticky top-0 z-10">
-        <div className="flex items-center gap-2">
-          <div className="w-2 h-2 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full animate-pulse" />
-          <h2 className="font-bold text-gray-800 dark:text-pink-200 tracking-tight">마음 정리 동반자</h2>
-        </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={endConsultation}
-            disabled={!roomId || loading || roomStatus === "ENDED"}
-            className="px-3 py-1.5 text-sm rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-pink-200 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:bg-gray-100 dark:disabled:bg-gray-800 disabled:text-gray-400 dark:disabled:text-pink-400 transition-colors"
-            title="대화 종료"
+      <header className="flex items-center gap-3 px-4 md:px-6 py-4 border-b border-purple-100 dark:border-gray-700 bg-white/60 dark:bg-gray-900/60 backdrop-blur-md sticky top-0 z-10">
+        {/* 모바일: 햄버거 메뉴 공간 확보 */}
+        <div className="md:hidden w-10 flex-shrink-0" />
+        
+        {/* 텍스트와 버튼을 같은 줄에 배치 */}
+        <div className="flex items-center gap-3 flex-1 min-w-0">
+          {/* 텍스트 영역 */}
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <div className="w-2 h-2 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full animate-pulse" />
+            <h2 className="font-bold text-gray-800 dark:text-pink-200 tracking-tight whitespace-nowrap">마음 정리 동반자</h2>
+          </div>
+          
+          {/* 버튼 영역 - 텍스트와 같은 줄, 오른쪽 정렬 */}
+          <div className="flex items-center gap-2 flex-shrink-0 ml-auto">
+            <button
+              onClick={() => {
+                void fetchSurvey();
+              }}
+              disabled={isSurveyCompleted || roomStatus === "ENDED"}
+              className="px-3 py-1.5 text-sm rounded-lg border border-purple-300 dark:border-purple-600 bg-white dark:bg-gray-800 text-purple-700 dark:text-pink-200 hover:bg-purple-50 dark:hover:bg-purple-900/30 disabled:bg-gray-100 dark:disabled:bg-gray-800 disabled:text-gray-400 dark:disabled:text-pink-400 transition-colors font-medium whitespace-nowrap"
+              title={isSurveyCompleted ? "설문을 이미 완료하셨습니다" : "피드백 설문하기"}
+            >
+              {isSurveyCompleted ? "설문 완료" : "설문하기"}
+            </button>
+            <button
+            onClick={() => setIsSummaryModalOpen(true)}
+            disabled={!roomId || messages.length === 0}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed transition-colors"
+            title="대화 요약"
           >
-            대화 종료
+            <DocumentTextIcon className="w-4 h-4" />
+            요약
           </button>
+            <button
+              onClick={endConsultation}
+              disabled={!roomId || loading || roomStatus === "ENDED"}
+              className="px-3 py-1.5 text-sm rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-pink-200 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:bg-gray-100 dark:disabled:bg-gray-800 disabled:text-gray-400 dark:disabled:text-pink-400 transition-colors whitespace-nowrap"
+              title={
+                !roomId 
+                  ? "채팅방이 없습니다" 
+                  : loading 
+                  ? "처리 중..." 
+                  : roomStatus === "ENDED" 
+                  ? "이미 종료된 대화입니다" 
+                  : "대화 종료"
+              }
+            >
+              대화 종료
+            </button>
+          </div>
         </div>
       </header>
 
@@ -611,17 +705,6 @@ const handleSendMessage = async (textToSend?: string) => {
         </div>
       </div>
       
-      {/* Survey Modal */}
-      {isSurveyOpen && surveyContent && (
-        <SurveyModal
-          isOpen={isSurveyOpen}
-          onClose={() => {
-            setSurveyContent(null);
-          }}
-          onComplete={handleSurveyComplete}
-          surveyContent={surveyContent}
-        />
-      )}
 
       <Feedback 
         isOpen={isModalOpen}
@@ -659,8 +742,24 @@ const handleSendMessage = async (textToSend?: string) => {
             }
           }}
         />
-        {/* 로컬 테스트 용 */}
-        {/* <SurveyTestButton/> */}
+
+      {/* Survey Modal */}
+      {isSurveyOpen && surveyContent && (
+        <SurveyModal
+          isOpen={isSurveyOpen}
+          onClose={() => {
+            setIsSurveyOpen(false);
+            setSurveyContent(null);
+          }}
+          onComplete={handleSurveyComplete}
+          surveyContent={surveyContent}
+        />
+      )}
+      <SummaryModal
+        isOpen={isSummaryModalOpen}
+        roomId={roomId}
+        onClose={() => setIsSummaryModalOpen(false)}
+      />
     </div>
     
   );

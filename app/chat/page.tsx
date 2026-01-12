@@ -32,9 +32,9 @@ function ChatPageContent() {
   const [selectedSimId, setSelectedSimId] = useState<string | null>(urlSimId);
   const [refreshKey, setRefreshKey] = useState<number>(0);
 
-  // -- URL이 변경되면 selectedSimId 업데이트
+  // -- URL이 변경되면 selectedSimId 업데이트 (시뮬레이션 모드일 때만)
   useEffect(() => {
-    if (isSimulation && urlSimId) {
+    if (isSimulation) {
       setSelectedSimId(urlSimId);
     }
   }, [isSimulation, urlSimId]);
@@ -99,7 +99,10 @@ function ChatPageContent() {
             
             <SimulationRoom 
               initialChatId={selectedSimId} 
-              onNewChatStarted={() => setRefreshKey((prev: number) => prev + 1)}
+              onNewChatStarted={(newChatId: string) => {
+                setSelectedSimId(newChatId);
+                setRefreshKey((prev: number) => prev + 1);
+              }}
             />
           </main>
         </div>
@@ -129,7 +132,7 @@ function ChatPageContent() {
       
       {/* 메인 채팅 영역 */}
       <div className="flex-1 relative bg-gradient-to-b from-purple-50 to-pink-50 dark:from-gray-900 dark:to-gray-950">
-        {/* 모바일 사이드바 토글 버튼 */}
+        {/* 모바일 사이드바 토글 버튼 - 헤더와 같은 높이에 배치 */}
         <button
           onClick={() => setSidebarOpen(!sidebarOpen)}
           className="md:hidden absolute top-4 left-4 z-30 p-2 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700"

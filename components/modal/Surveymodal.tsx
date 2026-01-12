@@ -7,7 +7,7 @@ import type { SurveyContent, SurveyQuestion } from "@/components/modal/_content/
 interface SurveyModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onComplete: (answers: Record<string, string>) => void;
+  onComplete: (answers: Record<string, string>) => Promise<void>;
   surveyContent: SurveyContent;
 }
 
@@ -18,6 +18,7 @@ export function SurveyModal({ isOpen, onClose, onComplete, surveyContent }: Surv
   const [step, setStep] = useState(1);
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [textValue, setTextValue] = useState("");
+  const [emailValue, setEmailValue] = useState("");
   const [showDone, setShowDone] = useState(false); // ✅ 완료 화면 표시 여부
   const completedRef = useRef(false);
 
@@ -32,9 +33,20 @@ export function SurveyModal({ isOpen, onClose, onComplete, surveyContent }: Surv
     setStep(1);
     setAnswers({});
     setTextValue("");
+    setEmailValue("");
     setShowDone(false);
     completedRef.current = false;
   }, [isOpen]);
+
+  // ✅ autoCloseMs 옵션 처리
+  useEffect(() => {
+    if (showDone && doneQuestion?.type === "done" && doneQuestion.autoCloseMs) {
+      const timer = setTimeout(() => {
+        closeSafely();
+      }, doneQuestion.autoCloseMs);
+      return () => clearTimeout(timer);
+    }
+  }, [showDone, doneQuestion]);
 
   // step 범위 보정
   useEffect(() => {
@@ -52,32 +64,59 @@ export function SurveyModal({ isOpen, onClose, onComplete, surveyContent }: Surv
     if (step <= 1) return;
     const prev = questions[step - 2];
     setStep((s) => s - 1);
-    if (prev?.type === "text") setTextValue(answers[prev.id] ?? "");
-    else setTextValue("");
+    if (prev?.type === "text") {
+      setTextValue(answers[prev.id] ?? "");
+      setEmailValue("");
+    } else if (prev?.type === "email") {
+      setEmailValue(answers[prev.id] ?? "");
+      setTextValue("");
+    } else {
+      setTextValue("");
+      setEmailValue("");
+    }
   };
 
   const goNext = () => {
     if (step >= total) return;
     const next = questions[step];
     setStep((s) => s + 1);
-    if (next?.type === "text") setTextValue(answers[next.id] ?? "");
-    else setTextValue("");
+    if (next?.type === "text") {
+      setTextValue(answers[next.id] ?? "");
+      setEmailValue("");
+    } else if (next?.type === "email") {
+      setEmailValue(answers[next.id] ?? "");
+      setTextValue("");
+    } else {
+      setTextValue("");
+      setEmailValue("");
+    }
   };
 
-const goDone = (finalAnswers: Record<string, string>) => {
+const goDone = async (finalAnswers: Record<string, string>) => {
   if (completedRef.current) return;
   completedRef.current = true;
   
   setAnswers(finalAnswers);
-  setShowDone(true);
   
-  // ✅ 백그라운드에서 서버 전송 (모달은 안 닫음)
-  onComplete(finalAnswers);
-  // ✅ 사용자에게 즉시 피드백
-  alert("설문에 응해주셔서 감사합니다 💗");
-
-  // ✅ 모달 닫기
-  closeSafely();
+  try {
+    // ✅ 서버 전송 완료 대기
+    await onComplete(finalAnswers);
+    
+    // ✅ 모달 닫기
+    closeSafely();
+    
+    // ✅ 완료 alert 표시
+    if (doneQuestion && doneQuestion.type === "done") {
+      const alertMessage = `${doneQuestion.title}\n\n${doneQuestion.desc || ''}\n\n설문에 참여해주셔서 감사합니다.`;
+      alert(alertMessage);
+    } else {
+      // doneQuestion이 없어도 기본 완료 메시지 표시
+      alert("설문에 참여해주셔서 감사합니다.");
+    }
+  } catch (error) {
+    console.error("설문 제출 중 오류 발생:", error);
+    alert("설문 제출 중 오류가 발생했습니다. 다시 시도해주세요.");
+  }
 };
 
   const handleSelect = (questionId: string, value: string) => {
@@ -111,6 +150,7 @@ const goDone = (finalAnswers: Record<string, string>) => {
     );
     const currentIndex = actualQuestions.findIndex((q) => q.id === current.id);
 
+    // 마지막 질문이면 완료 처리
     if (currentIndex === actualQuestions.length - 1) {
       goDone(nextAnswers);
     } else {
@@ -120,6 +160,60 @@ const goDone = (finalAnswers: Record<string, string>) => {
 
   const handleSkipText = () => {
     if (!current || current.type !== "text") return;
+
+    const nextAnswers = { ...answers };
+    setAnswers(nextAnswers);
+
+    const actualQuestions = questions.filter(
+      (q): q is Extract<SurveyQuestion, { id: string }> => q.type !== "done"
+    );
+    const currentIndex = actualQuestions.findIndex((q) => q.id === current.id);
+
+    if (currentIndex === actualQuestions.length - 1) {
+      goDone(nextAnswers);
+    } else {
+      goNext();
+    }
+  };
+
+  const handleEmailNext = () => {
+    if (!current || current.type !== "email") return;
+
+    const trimmed = emailValue.trim();
+    const optional = current.optional ?? false;
+    
+    // 이메일 형식 검증
+    if (trimmed.length > 0) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(trimmed)) {
+        alert("올바른 이메일 주소를 입력해주세요.");
+        return;
+      }
+    }
+    
+    if (!optional && trimmed.length === 0) {
+      alert("이메일 주소를 입력해주세요.");
+      return;
+    }
+
+    const nextAnswers = trimmed.length > 0 ? { ...answers, [current.id]: trimmed } : { ...answers };
+    setAnswers(nextAnswers);
+
+    const actualQuestions = questions.filter(
+      (q): q is Extract<SurveyQuestion, { id: string }> => q.type !== "done"
+    );
+    const currentIndex = actualQuestions.findIndex((q) => q.id === current.id);
+
+    // 마지막 질문이면 완료 처리
+    if (currentIndex === actualQuestions.length - 1) {
+      goDone(nextAnswers);
+    } else {
+      goNext();
+    }
+  };
+
+  const handleSkipEmail = () => {
+    if (!current || current.type !== "email") return;
 
     const nextAnswers = { ...answers };
     setAnswers(nextAnswers);
@@ -150,12 +244,18 @@ const goDone = (finalAnswers: Record<string, string>) => {
 
           <h3 className="text-xl font-bold text-center mb-3">{doneQuestion.title}</h3>
           {doneQuestion.desc && (
-            <p className="text-sm text-gray-500 dark:text-gray-400 text-center leading-relaxed mb-6">
+            <p className="text-sm text-gray-500 dark:text-gray-400 text-center leading-relaxed mb-4">
               {doneQuestion.desc}
             </p>
           )}
+          <div className="mb-6 p-4 rounded-xl bg-pink-50 dark:bg-pink-500/10 border border-pink-200 dark:border-pink-400/20">
+            <p className="text-sm text-pink-700 dark:text-pink-300 text-center leading-relaxed font-medium">
+              설문 완료 후 이메일을 입력해주시면 추첨을 통해 10명에게 커피 쿠폰을 제공드립니다.
+            </p>
+          </div>
           <button
             onClick={() => {
+              // ✅ alert는 이미 goDone에서 표시했으므로 여기서는 바로 닫기
               closeSafely();
             }}
             className="w-full rounded-xl px-4 py-3 font-semibold transition bg-pink-600 text-white hover:bg-pink-700"
@@ -195,9 +295,28 @@ const goDone = (finalAnswers: Record<string, string>) => {
     return null;
   }
 
-  const isTextOptional = current.type === "text" ? (current.optional ?? false) : false;
+  // 현재 질문이 변경될 때 이전 답변 불러오기
+  useEffect(() => {
+    if (!current) return;
+    if (current.type === "text" && current.id) {
+      setTextValue(answers[current.id] ?? "");
+      setEmailValue("");
+    } else if (current.type === "email" && current.id) {
+      setEmailValue(answers[current.id] ?? "");
+      setTextValue("");
+    } else {
+      setTextValue("");
+      setEmailValue("");
+    }
+  }, [current, answers]);
+
+  // 서버에서 받은 데이터에 optional이 없으면 기본값 true로 처리 (fallback과 일치)
+  const isTextOptional = current.type === "text" ? (current.optional !== undefined ? current.optional : true) : false;
   const textMaxLength = current.type === "text" ? (current.maxLength ?? 200) : 200;
   const textPlaceholder = current.type === "text" ? (current.placeholder ?? "") : "";
+  
+  const isEmailOptional = current.type === "email" ? (current.optional !== undefined ? current.optional : true) : false;
+  const emailPlaceholder = current.type === "email" ? (current.placeholder ?? "example@email.com") : "";
 
   const actualQuestionCount = questions.filter((q) => q.type !== "done").length;
 
@@ -292,18 +411,55 @@ const goDone = (finalAnswers: Record<string, string>) => {
                 className="flex-1 rounded-xl px-4 py-3 font-semibold transition bg-pink-600 text-white hover:bg-pink-700 disabled:opacity-50 disabled:cursor-not-allowed"
                 disabled={!isTextOptional && textValue.trim().length === 0}
               >
-                다음
+                {(() => {
+                  const actualQuestions = questions.filter(
+                    (q): q is Extract<SurveyQuestion, { id: string }> => q.type !== "done"
+                  );
+                  const currentIndex = actualQuestions.findIndex((q) => q.id === current.id);
+                  return currentIndex === actualQuestions.length - 1 ? "완료" : "다음";
+                })()}
               </button>
+            </div>
+          </div>
+        )}
 
-              {isTextOptional && (
-                <button
-                  type="button"
-                  onClick={handleSkipText}
-                  className="rounded-xl px-4 py-3 font-medium transition border border-gray-200 hover:bg-gray-50 dark:border-white/10 dark:hover:bg-white/5"
-                >
-                  건너뛰기
-                </button>
+        {/* email */}
+        {current.type === "email" && (
+          <div className="space-y-3">
+            <input
+              type="email"
+              value={emailValue}
+              onChange={(e) => setEmailValue(e.target.value)}
+              placeholder={emailPlaceholder}
+              className="w-full rounded-xl border p-4 text-sm border-gray-200 bg-white text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500/40 dark:border-white/10 dark:bg-neutral-900/40 dark:text-gray-100 dark:placeholder:text-gray-500"
+            />
+
+            <div className="space-y-1">
+              <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
+                <span>{isEmailOptional ? "선택 입력" : "입력 필요"}</span>
+              </div>
+              {current.helperText && (
+                <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
+                  {current.helperText}
+                </p>
               )}
+            </div>
+
+            <div className="flex gap-2 pt-1">
+              <button
+                type="button"
+                onClick={handleEmailNext}
+                className="flex-1 rounded-xl px-4 py-3 font-semibold transition bg-pink-600 text-white hover:bg-pink-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={!isEmailOptional && emailValue.trim().length === 0}
+              >
+                {(() => {
+                  const actualQuestions = questions.filter(
+                    (q): q is Extract<SurveyQuestion, { id: string }> => q.type !== "done"
+                  );
+                  const currentIndex = actualQuestions.findIndex((q) => q.id === current.id);
+                  return currentIndex === actualQuestions.length - 1 ? "완료" : "다음";
+                })()}
+              </button>
             </div>
           </div>
         )}
@@ -323,13 +479,7 @@ const goDone = (finalAnswers: Record<string, string>) => {
             {surveyContent.footer}
           </p>
 
-          <button
-            type="button"
-            onClick={closeSafely}
-            className="text-sm font-medium text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-          >
-            종료
-          </button>
+          <div className="w-12" /> {/* 종료 버튼 제거로 인한 공간 확보 */}
         </div>
       </div>
     </div>
